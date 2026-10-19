@@ -38,6 +38,10 @@ struct ContentView: View {
             .contextMenu(forSelectionType: UUID.self) { ids in
                 if let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
                     Button("Copy as cURL") { model.copyCURL(flow) }
+                    if flow.request.method != "CONNECT" {
+                        Button("Repeat") { model.repeatRequest(flow) }
+                        Button("Edit and Repeat…") { model.compose(from: flow) }
+                    }
                     if flow.response != nil, flow.request.method != "CONNECT" {
                         Button("Map Local with This Response") { model.mapLocal(from: flow); showMapRules = true }
                     }
@@ -66,6 +70,9 @@ struct ContentView: View {
                     Label("Breakpoints", systemImage: model.paused.isEmpty ? "pause.circle" : "pause.circle.fill")
                 }
                 .badge(model.paused.count)
+                Button { model.compose(from: model.selectedFlow.flatMap { $0.request.method == "CONNECT" ? nil : $0 }) } label: {
+                    Label("Compose", systemImage: "square.and.pencil")
+                }
                 Button { showMapRules = true } label: { Label("Map Local / Remote", systemImage: "arrow.triangle.swap") }
                 Button { showSetup = true } label: { Label("Setup", systemImage: "gearshape") }
             }
@@ -80,6 +87,9 @@ struct ContentView: View {
             .padding(.horizontal, 12).padding(.vertical, 4).background(.bar)
         }
         .sheet(isPresented: $showSetup) { SetupView(model: model) }
+        .sheet(isPresented: Binding(get: { model.composeDraft != nil }, set: { if !$0 { model.composeDraft = nil } })) {
+            ComposeView(model: model)
+        }
         .sheet(isPresented: $showMapRules) { MapRulesView(model: model) }
         .sheet(isPresented: $showBreakpoints) { BreakpointsView(model: model) }
         .sheet(item: Binding(get: { model.paused.first }, set: { _ in })) { PausedEditor(message: $0, model: model).id($0.id) }

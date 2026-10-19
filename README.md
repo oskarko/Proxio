@@ -21,3 +21,12 @@ Proxio is an independent clean-room project. It is not affiliated with any comme
 ## App
 
 `scripts/bundle.sh` builds `build/Proxio.app` (ad-hoc signed). The window has three panels: domains, flow list, inspector. The CA and system proxy are only changed after you confirm the exact command in a dialog.
+
+### Rewrite and replay
+
+- **Breakpoints**: pause matching requests and/or responses, edit method, URL, headers, status and body, then execute or cancel (cancelled traffic answers 499). Response breakpoints ask the server for an uncompressed body so it stays editable.
+- **Map Local**: answer matching requests from a file (read on every hit) or inline text, with status and headers; "Map Local with This Response" in the flow menu pre-fills it from a capture.
+- **Map Remote**: send matching requests to another scheme, host, port or path.
+- **Compose / Repeat**: send a new or captured request (optionally N times). It goes straight to the server, ignoring system proxy settings, and redirects are shown rather than followed.
+
+URL patterns are `host[:port]/path?query` globs with `*` (`api.example.com/v1/*`); a bare host matches every path. Rules are kept in memory only for now. HTTPS rules need interception enabled and the host not excluded.

@@ -27,6 +27,9 @@ final class AppModel {
     var breakpoints: [Breakpoint] = [] { didSet { rules.breakpoints = breakpoints } }
     var paused: [PausedMessage] = []
 
+    // Compose / Repeat: non-nil while the composer is open
+    var composeDraft: HTTPRequestRecord?
+
     // Rewrite rules
     var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules } }
     var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules } }
@@ -35,7 +38,7 @@ final class AppModel {
     var includeText = ""
     var excludeText = ""
 
-    private let store = FlowStore()
+    let store = FlowStore()
     private let policy = SSLProxyingPolicy()
     private let rules = TrafficRules()
     private let bridge = BreakpointBridge()

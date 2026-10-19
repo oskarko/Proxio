@@ -20,6 +20,16 @@ struct InspectorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
 
+            if !flow.notes.isEmpty {
+                HStack {
+                    ForEach(flow.notes, id: \.self) { note in
+                        Text(note).font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.tint.opacity(0.15), in: Capsule())
+                    }
+                    Spacer()
+                }.padding(.horizontal, 10).padding(.bottom, 6)
+            }
+
             Picker("", selection: $side) {
                 ForEach(Side.allCases, id: \.self) { Text($0.rawValue) }
             }
