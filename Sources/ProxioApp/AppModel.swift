@@ -24,15 +24,15 @@ final class AppModel {
     var systemProxyOn = false
 
     // Breakpoints
-    var breakpoints: [Breakpoint] = [] { didSet { rules.breakpoints = breakpoints } }
+    var breakpoints: [Breakpoint] = [] { didSet { rules.breakpoints = breakpoints; scheduleSave() } }
     var paused: [PausedMessage] = []
 
     // Compose / Repeat: non-nil while the composer is open
     var composeDraft: HTTPRequestRecord?
 
     // Rewrite rules
-    var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules } }
-    var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules } }
+    var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules; scheduleSave() } }
+    var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules; scheduleSave() } }
 
     // SSL proxying (one pattern per line)
     var includeText = ""
@@ -42,6 +42,8 @@ final class AppModel {
     private let policy = SSLProxyingPolicy()
     private let rules = TrafficRules()
     private let bridge = BreakpointBridge()
+    private let rulesStore = RulesStore()
+    private var saveTask: Task<Void, Never>?
     private var server: ProxyServer?
     private var observer: Task<Void, Never>?
     private let snapshots = ProxySnapshotStore()
@@ -52,9 +54,29 @@ final class AppModel {
             for await snapshot in store.changes() { self.flows = snapshot }
         }
         bridge.model = self
+        let saved = rulesStore.load()
+        breakpoints = saved.breakpoints
+        mapLocalRules = saved.mapLocal
+        mapRemoteRules = saved.mapRemote
+        // didSet observers do not run inside init, so hand the loaded rules to the proxy explicitly.
+        rules.breakpoints = saved.breakpoints
+        rules.mapLocalRules = saved.mapLocal
+        rules.mapRemoteRules = saved.mapRemote
         rules.breakpointHandler = bridge
         applyRules()
         Task { await refreshSystemState() }
+    }
+
+    /// Writes the rules shortly after the last edit, so typing in a field does not hit the disk per keystroke.
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard !Task.isCancelled, let self else { return }
+            do {
+                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules))
+            } catch { status = "Could not save rules: \(error.localizedDescription)" }
+        }
     }
 
     // MARK: Derived

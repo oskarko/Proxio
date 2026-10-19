@@ -85,3 +85,32 @@ private struct NoopHandler: BreakpointHandler {
     #expect(HeaderText.parse(HeaderText.format(headers)) == headers)
     #expect(HeaderText.parse("no colon here\n: empty name\n  X-A :  1  ") == [HTTPHeader(name: "X-A", value: "1")])
 }
+
+private func tempRulesURL() -> URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("proxio-\(UUID().uuidString)/rules.json")
+}
+
+@Test func rulesStoreRoundTripsEveryRuleKind() throws {
+    let store = RulesStore(url: tempRulesURL())
+    defer { try? FileManager.default.removeItem(at: store.url.deletingLastPathComponent()) }
+    #expect(store.load() == RulesDocument())   // missing file
+
+    let document = RulesDocument(
+        breakpoints: [Breakpoint(matcher: RequestMatcher(method: "POST", urlPattern: "api.example.com/*"), onResponse: false)],
+        mapLocal: [MapLocalRule(matcher: RequestMatcher(urlPattern: "*"), status: 418, headers: [HTTPHeader(name: "X-A", value: "1")], body: Data([0, 1, 2, 255]), filePath: "~/x.json")],
+        mapRemote: [MapRemoteRule(matcher: RequestMatcher(urlPattern: "a.com"), scheme: "http", host: "localhost", port: 3000, path: "/m")]
+    )
+    try store.save(document)
+    #expect(store.load() == document)
+}
+
+@Test func corruptRulesAreKeptAsBackupInsteadOfOverwritten() throws {
+    let store = RulesStore(url: tempRulesURL())
+    defer { try? FileManager.default.removeItem(at: store.url.deletingLastPathComponent()) }
+    try FileManager.default.createDirectory(at: store.url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("{ not json".utf8).write(to: store.url)
+
+    #expect(store.load() == RulesDocument())
+    #expect(!FileManager.default.fileExists(atPath: store.url.path))
+    #expect(try Data(contentsOf: store.url.appendingPathExtension("bak")) == Data("{ not json".utf8))
+}
