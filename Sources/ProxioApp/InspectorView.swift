@@ -13,7 +13,7 @@ struct InspectorView: View {
                 Text("\(flow.request.method) \(flow.request.url.absoluteString)")
                     .font(.headline).lineLimit(2).textSelection(.enabled)
                 if let r = flow.response {
-                    Text("\(r.status) \(r.reason) · \(BodyFormatter.byteCount(r.body.count)) · \(Int(flow.duration * 1000)) ms")
+                    Text("\(r.status) \(r.reason) · \(BodyFormatter.byteCount(r.body.count))\(r.decodedBody.count != r.body.count ? " (\(BodyFormatter.byteCount(r.decodedBody.count)) decoded)" : "") · \(Int(flow.duration * 1000)) ms")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -38,10 +38,10 @@ struct InspectorView: View {
             Divider()
             switch side {
             case .request:
-                MessageView(headers: flow.request.headers, payload: flow.request.body, mime: header("Content-Type", in: flow.request.headers), query: queryItems)
+                MessageView(headers: flow.request.headers, payload: flow.request.decodedBody, mime: header("Content-Type", in: flow.request.headers), query: queryItems)
             case .response:
                 if let r = flow.response {
-                    MessageView(headers: r.headers, payload: r.body, mime: r.mimeType, query: [])
+                    MessageView(headers: r.headers, payload: r.decodedBody, mime: r.mimeType, query: [])
                 } else {
                     ContentUnavailableView("No response yet", systemImage: "hourglass")
                 }

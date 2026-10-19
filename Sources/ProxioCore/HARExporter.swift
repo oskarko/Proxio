@@ -12,7 +12,7 @@ public enum HARExporter {
 
         let entries: [[String: Any]] = flows.map { f in
             let res = f.response
-            let bodyText = res.flatMap { String(data: $0.body, encoding: .utf8) } ?? ""
+            let bodyText = res.flatMap { String(data: $0.decodedBody, encoding: .utf8) } ?? ""
             return [
                 "startedDateTime": iso.string(from: f.startedAt),
                 "time": f.duration * 1000,
@@ -33,7 +33,7 @@ public enum HARExporter {
                     "httpVersion": res?.httpVersion ?? "HTTP/1.1",
                     "headers": headers(res?.headers ?? []),
                     "cookies": [] as [Any],
-                    "content": ["size": res?.body.count ?? 0, "mimeType": res?.mimeType ?? "", "text": bodyText] as [String: Any],
+                    "content": ["size": res?.decodedBody.count ?? 0, "mimeType": res?.mimeType ?? "", "text": bodyText] as [String: Any],
                     "redirectURL": "",
                     "headersSize": -1,
                     "bodySize": res?.body.count ?? 0,
