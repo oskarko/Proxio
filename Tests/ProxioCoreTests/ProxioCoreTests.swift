@@ -44,3 +44,40 @@ private func sample(_ path: String, status: Int = 200, mime: String = "applicati
     let req = try #require(entries[0]["request"] as? [String: Any])
     #expect((req["queryString"] as? [[String: Any]])?.first?["name"] as? String == "id")
 }
+
+@Test func changesStreamYieldsSnapshotThenUpdates() async {
+    let store = FlowStore()
+    await store.add(sample("/a"))
+    let reader = Task { () -> [Int] in
+        var seen: [Int] = []
+        for await flows in store.changes() {
+            seen.append(flows.count)
+            if flows.count == 2 { break }
+        }
+        return seen
+    }
+    try? await Task.sleep(nanoseconds: 100_000_000)
+    await store.add(sample("/b"))
+    let seen = await reader.value
+    #expect(seen.first == 1)
+    #expect(seen.last == 2)
+}
+
+@Test func curlExportQuotesAndSkipsHopHeaders() {
+    let req = HTTPRequestRecord(
+        method: "POST", url: URL(string: "https://x.com/a?b=1")!,
+        headers: [HTTPHeader(name: "Content-Type", value: "application/json"), HTTPHeader(name: "Content-Length", value: "9"), HTTPHeader(name: "Host", value: "x.com")],
+        body: Data("{\"n\":\"O'Neil\"}".utf8)
+    )
+    let cmd = CURLExporter.command(for: req)
+    #expect(cmd == "curl -X POST 'https://x.com/a?b=1' -H 'Content-Type: application/json' --data-raw '{\"n\":\"O'\\''Neil\"}'")
+}
+
+@Test func bodyFormatting() {
+    #expect(BodyFormatter.prettyJSON(Data("{\"b\":1,\"a\":[1,2]}".utf8))?.contains("\"a\" : [") == true)
+    #expect(BodyFormatter.prettyJSON(Data("not json".utf8)) == nil)
+    #expect(BodyFormatter.prettyJSON(Data()) == nil)
+    let hex = BodyFormatter.hexDump(Data("Hi!\n".utf8))
+    #expect(hex.hasPrefix("00000000  48 69 21 0a"))
+    #expect(hex.hasSuffix("|Hi!.|"))
+}

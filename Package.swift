@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "ProxioCore", targets: ["ProxioCore"]),
         .library(name: "ProxioProxy", targets: ["ProxioProxy"]),
         .library(name: "ProxioSystem", targets: ["ProxioSystem"]),
+        .executable(name: "ProxioApp", targets: ["ProxioApp"]),
         .executable(name: "proxio-cli", targets: ["proxio-cli"]),
     ],
     dependencies: [
@@ -32,6 +33,11 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .target(name: "ProxioSystem"),
+        .executableTarget(
+            name: "ProxioApp",
+            dependencies: ["ProxioCore", "ProxioProxy", "ProxioSystem"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .executableTarget(
             name: "proxio-cli",
             dependencies: ["ProxioCore", "ProxioProxy", "ProxioSystem"],
