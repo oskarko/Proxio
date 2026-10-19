@@ -139,21 +139,52 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             headers: head.headers.map { HTTPHeader(name: $0.name, value: $0.value) },
             body: body
         )
-        let flow = Flow(startedAt: startedAt, request: request)
-
-        guard let handler = env.rules.breakpointHandler(request: request, phase: .request) else {
-            return send(context: context, flow: flow, original: request)
+        var flow = Flow(startedAt: startedAt, request: request)
+        let local = env.rules.mapLocal(for: request)
+        if local != nil {
+            flow.notes.append("Map Local")
+        } else if let (rule, rewritten) = env.rules.mapRemote(for: request) {
+            flow.request.url = rewritten
+            flow.notes.append(rule.summary)
         }
-        let loop = context.eventLoop
+
+        guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .request) else {
+            return proceed(context: context, flow: flow, original: request, local: local)
+        }
+        let loop = context.eventLoop, paused = flow
         Task {
-            let edited = await handler.resume(request: request)
+            let edited = await handler.resume(request: paused.request)
             loop.execute {
-                guard let edited else { return self.cancel(context: context, flow: flow) }
-                var flow = flow
+                guard let edited else { return self.cancel(context: context, flow: paused) }
+                var flow = paused
                 flow.request = edited
-                self.send(context: context, flow: flow, original: request)
+                self.proceed(context: context, flow: flow, original: request, local: local)
             }
         }
+    }
+
+    /// Answers from a Map Local rule, or sends the request upstream.
+    private func proceed(context: ChannelHandlerContext, flow: Flow, original: HTTPRequestRecord, local: MapLocalRule?) {
+        guard let local else { return send(context: context, flow: flow, original: original) }
+        let response = local.makeResponse()
+        let client = context.channel, env = self.env
+        guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .response) else {
+            return Self.finish(flow, with: response, client: client, store: env.store)
+        }
+        Task {
+            let edited = await handler.resume(response: response, for: flow.request)
+            client.eventLoop.execute { Self.finish(flow, with: edited, client: client, store: env.store) }
+        }
+    }
+
+    /// Records the exchange and writes `response` (nil = cancelled at a breakpoint).
+    static func finish(_ flow: Flow, with response: HTTPResponseRecord?, client: Channel, store: FlowStore) {
+        var flow = flow
+        flow.response = response ?? HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio")
+        flow.duration = Date().timeIntervalSince(flow.startedAt)
+        let done = flow
+        Task { await store.add(done) }
+        ResponseWriter.write(response, to: client)
     }
 
     /// Answers 499 for a request the user cancelled at a breakpoint.
@@ -323,24 +354,8 @@ final class UpstreamResponseHandler: ChannelInboundHandler {
 
     /// Writes a held (possibly edited) response; nil means the user cancelled it.
     private func deliver(_ edited: HTTPResponseRecord?) {
-        guard let edited else {
-            record(HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio"))
-            var headers = HTTPHeaders([("Content-Length", "0"), ("Connection", "close")])
-            headers.replaceOrAdd(name: "Content-Length", value: "0")
-            client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: .custom(code: 499, reasonPhrase: "Cancelled by Proxio"), headers: headers)), promise: nil)
-            client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
-            return
-        }
-        record(edited)
-        var headers = HTTPHeaders()
-        for h in edited.headers { headers.add(name: h.name, value: h.value) }
-        for name in ["Transfer-Encoding", "Content-Length", "Connection"] { headers.remove(name: name) }
-        headers.add(name: "Content-Length", value: String(edited.body.count))
-        headers.add(name: "Connection", value: "close")
-        let status = HTTPResponseStatus(statusCode: edited.status, reasonPhrase: edited.reason)
-        client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: status, headers: headers)), promise: nil)
-        if !edited.body.isEmpty { client.write(HTTPServerResponsePart.body(.byteBuffer(ByteBuffer(bytes: edited.body))), promise: nil) }
-        client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
+        record(edited ?? HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio"))
+        ResponseWriter.write(edited, to: client)
     }
 
     private func record(_ response: HTTPResponseRecord?) {
@@ -353,5 +368,26 @@ final class UpstreamResponseHandler: ChannelInboundHandler {
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         client.close(promise: nil)
         context.close(promise: nil)
+    }
+}
+
+/// Writes a complete, already-buffered response and closes the connection.
+enum ResponseWriter {
+    static func write(_ response: HTTPResponseRecord?, to client: Channel) {
+        guard let response else {
+            let headers = HTTPHeaders([("Content-Length", "0"), ("Connection", "close")])
+            client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: .custom(code: 499, reasonPhrase: "Cancelled by Proxio"), headers: headers)), promise: nil)
+            client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
+            return
+        }
+        var headers = HTTPHeaders()
+        for h in response.headers { headers.add(name: h.name, value: h.value) }
+        for name in ["Transfer-Encoding", "Content-Length", "Connection"] { headers.remove(name: name) }
+        headers.add(name: "Content-Length", value: String(response.body.count))
+        headers.add(name: "Connection", value: "close")
+        let status = HTTPResponseStatus(statusCode: response.status, reasonPhrase: response.reason)
+        client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: status, headers: headers)), promise: nil)
+        if !response.body.isEmpty { client.write(HTTPServerResponsePart.body(.byteBuffer(ByteBuffer(bytes: response.body))), promise: nil) }
+        client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
     }
 }

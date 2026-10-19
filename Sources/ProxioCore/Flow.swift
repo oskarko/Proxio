@@ -1,6 +1,6 @@
 import Foundation
 
-public struct HTTPHeader: Sendable, Equatable, Codable {
+public struct HTTPHeader: Sendable, Hashable, Codable {
     public var name: String
     public var value: String
     public init(name: String, value: String) {
@@ -53,12 +53,15 @@ public struct Flow: Sendable, Identifiable, Equatable, Codable {
     public var duration: TimeInterval
     public var request: HTTPRequestRecord
     public var response: HTTPResponseRecord?
+    /// Rules that altered this exchange, e.g. "Map Local".
+    public var notes: [String]
 
-    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil) {
+    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil, notes: [String] = []) {
         self.id = id
         self.startedAt = startedAt
         self.duration = duration
         self.request = request
         self.response = response
+        self.notes = notes
     }
 }

@@ -424,3 +424,67 @@ private func proxiedSession(port: Int) -> URLSession {
     try await upstream.close().get()
     try await group.shutdownGracefully()
 }
+
+// MARK: - Map Local / Map Remote
+
+@Test func mapLocalAnswersWithoutContactingTheServer() async throws {
+    let rules = TrafficRules()
+    rules.mapLocalRules = [MapLocalRule(
+        matcher: RequestMatcher(urlPattern: "unreachable.invalid/*"),
+        status: 202, headers: [HTTPHeader(name: "X-Mock", value: "1")], body: Data(#"{"mocked":true}"#.utf8)
+    )]
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (data, response) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://unreachable.invalid/api/thing")!)
+    let http = response as? HTTPURLResponse
+    #expect(http?.statusCode == 202)
+    #expect(http?.value(forHTTPHeaderField: "X-Mock") == "1")
+    #expect(http?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    #expect(String(data: data, encoding: .utf8) == #"{"mocked":true}"#)
+
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let flow = await store.all().first
+    #expect(flow?.notes == ["Map Local"])
+    #expect(flow?.response?.status == 202)
+
+    try await proxy.stop()
+}
+
+@Test func mapRemoteSendsTheRequestToAnotherHost() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startEchoUpstream(group)
+    let upstreamPort = upstream.localAddress!.port!
+
+    let rules = TrafficRules()
+    rules.mapRemoteRules = [MapRemoteRule(matcher: RequestMatcher(urlPattern: "unreachable.invalid"), host: "127.0.0.1", port: upstreamPort, path: "/redirected")]
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (data, _) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://unreachable.invalid/original?q=1")!)
+    #expect(String(data: data, encoding: .utf8) == "GET /redirected?q=1 x-edit=- host=127.0.0.1:\(upstreamPort) body=")
+
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let flow = await store.all().first
+    #expect(flow?.request.url.host == "127.0.0.1")
+    #expect(flow?.notes.first?.hasPrefix("Map Remote") == true)
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}
+
+@Test func mapLocalResponseCanBeHeldAtABreakpoint() async throws {
+    let rules = TrafficRules()
+    rules.mapLocalRules = [MapLocalRule(matcher: RequestMatcher(urlPattern: "unreachable.invalid"), body: Data("original".utf8))]
+    rules.breakpoints = [Breakpoint(matcher: RequestMatcher(urlPattern: "*"), onRequest: false, onResponse: true)]
+    rules.breakpointHandler = ScriptedBreakpoints(editResponse: { r in var r = r; r.body = Data("tweaked".utf8); return r })
+    let proxy = try ProxyServer(store: FlowStore(), port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (data, _) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://unreachable.invalid/")!)
+    #expect(String(data: data, encoding: .utf8) == "tweaked")
+    try await proxy.stop()
+}

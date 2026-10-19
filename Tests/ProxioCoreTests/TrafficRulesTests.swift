@@ -39,3 +39,43 @@ private struct NoopHandler: BreakpointHandler {
     rules.breakpoints[0].isEnabled = false
     #expect(rules.breakpointHandler(request: request, phase: .response) == nil)
 }
+
+@Test func mapRemoteRewritesOnlyTheConfiguredParts() {
+    let url = URL(string: "https://api.example.com/v1/users?id=7")!
+    let rule = MapRemoteRule(matcher: RequestMatcher(urlPattern: "api.example.com"), scheme: "http", host: "localhost", port: 3000, path: "/mock")
+    #expect(rule.rewritten(url)?.absoluteString == "http://localhost:3000/mock?id=7")
+
+    let hostOnly = MapRemoteRule(matcher: RequestMatcher(urlPattern: "*"), host: "staging.example.com")
+    #expect(hostOnly.rewritten(url)?.absoluteString == "https://staging.example.com/v1/users?id=7")
+}
+
+@Test func rulesPickTheFirstEnabledMatch() {
+    let rules = TrafficRules()
+    let request = HTTPRequestRecord(method: "GET", url: URL(string: "http://example.com/a")!)
+    rules.mapLocalRules = [
+        MapLocalRule(isEnabled: false, matcher: RequestMatcher(urlPattern: "*"), status: 500),
+        MapLocalRule(matcher: RequestMatcher(urlPattern: "example.com"), status: 201),
+    ]
+    #expect(rules.mapLocal(for: request)?.status == 201)
+    #expect(rules.mapLocal(for: HTTPRequestRecord(method: "GET", url: URL(string: "http://other.com/")!)) == nil)
+
+    rules.mapRemoteRules = [MapRemoteRule(matcher: RequestMatcher(urlPattern: "example.com"), host: "example.com")]
+    #expect(rules.mapRemote(for: request) == nil)   // rewriting to the same URL is not a change
+}
+
+@Test func mapLocalBuildsResponsesFromBodyAndFile() throws {
+    let inline = MapLocalRule(matcher: RequestMatcher(urlPattern: "*"), status: 404, body: Data(#"{"ok":false}"#.utf8)).makeResponse()
+    #expect(inline.status == 404)
+    #expect(inline.reason == "Not Found")
+    #expect(inline.mimeType == "application/json")
+
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent("proxio-\(UUID().uuidString).html")
+    try Data("<h1>hi</h1>".utf8).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let fromFile = MapLocalRule(matcher: RequestMatcher(urlPattern: "*"), filePath: file.path).makeResponse()
+    #expect(fromFile.mimeType == "text/html")
+    #expect(String(data: fromFile.body, encoding: .utf8) == "<h1>hi</h1>")
+
+    let missing = MapLocalRule(matcher: RequestMatcher(urlPattern: "*"), filePath: "/nonexistent/file.json").makeResponse()
+    #expect(missing.status == 500)
+}
