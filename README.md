@@ -45,9 +45,9 @@ Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split
 
 ### HTTP/2 and keep-alive
 
-Client connections to the proxy are kept alive across requests (HTTP/1.1, including inside decrypted tunnels); pipelined requests are answered in order. Inside intercepted CONNECT tunnels the proxy negotiates ALPN (`h2`, `http/1.1`) with the client and with the origin, so HTTP/2 clients are captured, rewritten (breakpoints, Map Local/Remote, scripts) and forwarded, with trailers preserved. An HTTP/2 client can talk to an HTTP/1.1 origin and vice versa.
+Client connections to the proxy are kept alive across requests (HTTP/1.1, including inside decrypted tunnels); pipelined requests are answered in order. Inside intercepted CONNECT tunnels the proxy negotiates ALPN (`h2`, `http/1.1`) with the client and with the origin, so HTTP/2 clients are captured, rewritten (breakpoints, Map Local/Remote, scripts) and forwarded, with trailers preserved. An HTTP/2 client can talk to an HTTP/1.1 origin and vice versa. Origin connections are pooled per event loop: idle HTTP/1.1 connections are reused for 30 s (a connection found dead before any response byte is retried once on a fresh one), and an HTTP/2 origin gets one shared connection with a stream per request. WebSocket upgrades, HEAD requests and `Connection: close` responses never reuse a connection. Plain-HTTP and HTTP/1.1 clients are served over HTTP/2 when the origin offers it on TLS.
 
-Limitations: flows held by a breakpoint or script are buffered whole; upstream connections are not pooled or multiplexed (one per request); no flow-control tuning; streaming gRPC is passed through but only decoded per message once complete; opaque (non-intercepted) tunnels are untouched; WebSocket stays HTTP/1.1; there is no h2c on the proxy port.
+Limitations: flows held by a breakpoint or script are buffered whole; no flow-control tuning; streaming gRPC is passed through but only decoded per message once complete; opaque (non-intercepted) tunnels are untouched; WebSocket stays HTTP/1.1; there is no h2c on the proxy port.
 
 ### Privileged helper (optional)
 

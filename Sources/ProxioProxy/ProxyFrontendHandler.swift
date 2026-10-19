@@ -14,6 +14,7 @@ struct ProxyEnvironment {
     let upstreamSSLContext: NIOSSLContext
     /// Same trust settings as `upstreamSSLContext`, but also offers `h2` through ALPN.
     let upstreamH2SSLContext: NIOSSLContext
+    let pool = UpstreamPool()
     let rules: TrafficRules
 
     /// Starts a flow for `request` and applies Map Local / Map Remote and scripts.
@@ -234,6 +235,13 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return fail(context: context, status: .badRequest)
         }
+        if !Self.isWebSocketUpgrade(request) {
+            // Pooled path: reuses idle origin connections, and shares one HTTP/2 connection when the origin offers it.
+            let sameOrigin = original.url.host == url.host && original.url.port == url.port
+            let clientHost = request.headers.first { $0.name.caseInsensitiveCompare("Host") == .orderedSame }?.value
+            let exchange = HTTP1Exchange(client: context.channel, flow: flow, environment: env, keepAlive: keepAlive)
+            return UpstreamConnection.open(request: request, env: env, loop: context.eventLoop, hostHeader: sameOrigin ? clientHost : nil, delegate: exchange)
+        }
         let useTLS = scheme == "https"
         let port = url.port ?? (useTLS ? 443 : 80)
         var path = components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath
@@ -446,6 +454,97 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         client.close(promise: nil)
         context.close(promise: nil)
+    }
+}
+
+/// Answers an HTTP/1.1 client from a pooled upstream connection (HTTP/1.1 or HTTP/2 origin), streaming the
+/// response through and recording a copy. A response breakpoint or script holds the whole message instead.
+final class HTTP1Exchange: UpstreamDelegate {
+    private let client: Channel
+    private var flow: Flow
+    private let store: FlowStore
+    private let pauseHandler: BreakpointHandler?
+    private let rules: TrafficRules
+    private let holds: Bool
+    private var response: HTTPResponseRecord?
+    private var body = Data()
+    private var wroteHead = false
+    /// The client wants to reuse its connection; downgraded when the response has no length framing.
+    private var keepAlive: Bool
+
+    init(client: Channel, flow: Flow, environment: ProxyEnvironment, keepAlive: Bool) {
+        self.client = client
+        self.flow = flow
+        self.keepAlive = keepAlive
+        self.store = environment.store
+        self.rules = environment.rules
+        self.pauseHandler = environment.rules.breakpointHandler(request: flow.request, phase: .response)
+        self.holds = pauseHandler != nil || environment.rules.hasScripts(for: flow.request)
+    }
+
+    func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) {
+        response = HTTPResponseRecord(status: status, reason: reason, headers: headers)
+        guard !holds else { return }
+        var out = HTTPHeaders()
+        for h in headers where !["connection", "keep-alive", "proxy-connection", "upgrade"].contains(h.name.lowercased()) { out.add(name: h.name, value: h.value) }
+        keepAlive = keepAlive && Self.isFramed(status: status, headers: headers, method: flow.request.method)
+        out.add(name: "Connection", value: keepAlive ? "keep-alive" : "close")
+        wroteHead = true
+        client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: HTTPResponseStatus(statusCode: status, reasonPhrase: reason), headers: out)), promise: nil)
+    }
+
+    func upstreamBody(_ bytes: ByteBuffer) {
+        body.append(contentsOf: bytes.readableBytesView)
+        if !holds { client.write(HTTPServerResponsePart.body(.byteBuffer(bytes)), promise: nil) }
+    }
+
+    func upstreamEnd(trailers: [HTTPHeader]) {
+        guard var held = response else { return upstreamFailed(UpstreamError.closed) }
+        held.body = body
+        held.trailers = trailers
+        guard holds else {
+            record(held)
+            let reuse = keepAlive
+            client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in if !reuse { client.close(promise: nil) } }
+            return
+        }
+        let scripted = rules.applyScripts(to: held, for: flow.request)
+        held = scripted.value
+        flow.notes += scripted.notes
+        guard let pauseHandler else { return deliver(held) }
+        let request = flow.request, snapshot = held
+        Task {
+            let edited = await pauseHandler.resume(response: snapshot, for: request)
+            self.client.eventLoop.execute { self.deliver(edited) }
+        }
+    }
+
+    func upstreamFailed(_ error: Error) {
+        if wroteHead { return client.close(promise: nil) }
+        let headers = HTTPHeaders([("Content-Length", "0"), ("Connection", "close")])
+        client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: .badGateway, headers: headers)), promise: nil)
+        client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
+    }
+
+    private func deliver(_ edited: HTTPResponseRecord?) {
+        record(edited ?? HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio"))
+        ResponseWriter.write(edited, to: client, keepAlive: keepAlive)
+    }
+
+    private func record(_ response: HTTPResponseRecord) {
+        flow.response = response
+        flow.duration = Date().timeIntervalSince(flow.startedAt)
+        let done = flow, store = self.store
+        Task { await store.add(done) }
+    }
+
+    /// Whether the client can tell where the body ends without the connection closing.
+    private static func isFramed(status: Int, headers: [HTTPHeader], method: String) -> Bool {
+        if method.uppercased() == "HEAD" || status < 200 || status == 204 || status == 304 { return true }
+        return headers.contains { h in
+            let n = h.name.lowercased()
+            return n == "content-length" || (n == "transfer-encoding" && h.value.lowercased().contains("chunked"))
+        }
     }
 }
 

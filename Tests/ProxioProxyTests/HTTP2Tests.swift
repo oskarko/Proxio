@@ -274,3 +274,100 @@ private struct EditResponse: BreakpointHandler {
     try await proxy.stop()
     try await group.shutdownGracefully()
 }
+
+// MARK: Upstream connection reuse
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var n = 0
+    func bump() { lock.withLock { n += 1 } }
+    var value: Int { lock.withLock { n } }
+}
+
+/// HTTP/1.1 origin handler that keeps the connection open and counts accepted connections.
+private final class KeepAliveEcho: ChannelInboundHandler {
+    typealias InboundIn = HTTPServerRequestPart
+    typealias OutboundOut = HTTPServerResponsePart
+    private let accepted: Counter
+    private var body = Data()
+    init(accepted: Counter) { self.accepted = accepted }
+    func channelActive(context: ChannelHandlerContext) { accepted.bump(); context.fireChannelActive() }
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        switch unwrapInboundIn(data) {
+        case .head: body = Data()
+        case .body(let buf): body.append(contentsOf: buf.readableBytesView)
+        case .end:
+            let reply = Data("echo:".utf8) + body
+            var headers = HTTPHeaders()
+            headers.add(name: "Content-Length", value: String(reply.count))
+            context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: .ok, headers: headers))), promise: nil)
+            context.write(wrapOutboundOut(.body(.byteBuffer(ByteBuffer(bytes: reply)))), promise: nil)
+            context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+        }
+    }
+}
+
+@Test func http1OriginConnectionIsReusedAcrossRequests() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let originCA = try CertificateAuthority(commonName: "Origin Reuse CA")
+    let context = try originCA.serverContext(for: "localhost", applicationProtocols: ["http/1.1"])
+    let accepted = Counter()
+    let origin = try await ServerBootstrap(group: group)
+        .childChannelInitializer { ch in
+            ch.pipeline.addHandler(NIOSSLServerHandler(context: context))
+                .flatMap { ch.pipeline.configureHTTPServerPipeline() }
+                .flatMap { ch.pipeline.addHandler(KeepAliveEcho(accepted: accepted)) }
+        }
+        .bind(host: "127.0.0.1", port: 0).get()
+    let originPort = origin.localAddress!.port!
+
+    var upstreamTLS = TLSConfiguration.makeClientConfiguration()
+    upstreamTLS.trustRoots = .certificates([try nioCert(try originCA.rootCertificatePEM)])
+    let proxioCA = try CertificateAuthority()
+    let proxy = try ProxyServer(store: FlowStore(), port: 0, ca: proxioCA, upstreamTLS: upstreamTLS, threads: 1)
+    let proxyPort = try await proxy.start()
+
+    for word in ["one", "two", "three"] {
+        let answer = try await h2Post(group: group, proxyPort: proxyPort, originPort: originPort, trusting: proxioCA, path: "/r", body: Data(word.utf8))
+        #expect(String(decoding: answer.body, as: UTF8.self) == "echo:\(word)")
+    }
+    #expect(accepted.value == 1)
+
+    try await proxy.stop()
+    try await origin.close().get()
+    try await group.shutdownGracefully()
+}
+
+@Test func http2OriginConnectionIsSharedAcrossRequests() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let originCA = try CertificateAuthority(commonName: "Origin H2 Share CA")
+    let context = try originCA.serverContext(for: "localhost", applicationProtocols: ["h2"])
+    let accepted = Counter()
+    let origin = try await ServerBootstrap(group: group)
+        .childChannelInitializer { ch in
+            accepted.bump()
+            return ch.pipeline.addHandler(NIOSSLServerHandler(context: context)).flatMap {
+                ch.configureHTTP2Pipeline(mode: .server) { stream in stream.pipeline.addHandler(GRPCEchoStream()) }.map { _ in }
+            }
+        }
+        .bind(host: "127.0.0.1", port: 0).get()
+    let originPort = origin.localAddress!.port!
+
+    var upstreamTLS = TLSConfiguration.makeClientConfiguration()
+    upstreamTLS.trustRoots = .certificates([try nioCert(try originCA.rootCertificatePEM)])
+    let proxioCA = try CertificateAuthority()
+    let proxy = try ProxyServer(store: FlowStore(), port: 0, ca: proxioCA, upstreamTLS: upstreamTLS, threads: 1)
+    let proxyPort = try await proxy.start()
+
+    let message = Data([0, 0, 0, 0, 3, 0x08, 0x96, 0x01])
+    for _ in 0..<3 {
+        let answer = try await h2Post(group: group, proxyPort: proxyPort, originPort: originPort, trusting: proxioCA, path: "/pkg.Echo/Say", body: message)
+        #expect(answer.body == message)
+        #expect(answer.trailers["grpc-status"] == "0")
+    }
+    #expect(accepted.value == 1)
+
+    try await proxy.stop()
+    try await origin.close().get()
+    try await group.shutdownGracefully()
+}

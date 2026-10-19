@@ -10,7 +10,7 @@ import ProxioCore
 
 // HTTP/2 support. The client side only exists inside intercepted tunnels (ALPN `h2` on the
 // forged certificate); the upstream side negotiates `h2` or `http/1.1` with the origin.
-// One request is one upstream connection, so streams are never multiplexed upstream.
+// Upstream connections are pooled: idle HTTP/1.1 connections are reused and HTTP/2 origins get one connection with a stream per request.
 
 /// Callbacks from an upstream connection, always on the event loop it was opened on.
 protocol UpstreamDelegate: AnyObject {
@@ -27,9 +27,86 @@ private let connectionSpecific: Set<String> = ["connection", "keep-alive", "prox
 
 private func isPseudo(_ name: String) -> Bool { name.hasPrefix(":") }
 
+/// Idle HTTP/1.1 connections and live HTTP/2 connections to origins, so repeated requests skip the TCP and TLS handshakes.
+/// Entries are per event loop: a channel is only ever touched from the loop it was created on.
+final class UpstreamPool: @unchecked Sendable {
+    struct Key: Hashable {
+        let host: String, port: Int, tls: Bool, loop: ObjectIdentifier
+    }
+
+    final class H2Connection {
+        let channel: Channel
+        let multiplexer: HTTP2StreamMultiplexer
+        var active = 0
+        var idleToken = 0
+        init(channel: Channel, multiplexer: HTTP2StreamMultiplexer) { self.channel = channel; self.multiplexer = multiplexer }
+    }
+
+    static let idleLifetime: TimeAmount = .seconds(30)
+    static let maxIdlePerHost = 8
+
+    private let lock = NSLock()
+    private var idle: [Key: [PooledHTTP1Handler]] = [:]
+    private var h2: [Key: H2Connection] = [:]
+
+    /// An idle HTTP/1.1 connection that is still open, most recently used first.
+    func takeIdle(_ key: Key) -> PooledHTTP1Handler? {
+        lock.withLock {
+            while var list = idle[key], let handler = list.popLast() {
+                idle[key] = list
+                if handler.isUsable { return handler }
+            }
+            return nil
+        }
+    }
+
+    func release(_ key: Key, _ handler: PooledHTTP1Handler) {
+        let kept = lock.withLock { () -> Bool in
+            var list = idle[key] ?? []
+            guard list.count < Self.maxIdlePerHost else { return false }
+            list.append(handler)
+            idle[key] = list
+            return true
+        }
+        if !kept { handler.channel?.close(promise: nil) }
+    }
+
+    func remove(_ key: Key, _ handler: PooledHTTP1Handler) {
+        lock.withLock { idle[key]?.removeAll { $0 === handler } }
+    }
+
+    func liveH2(_ key: Key) -> H2Connection? {
+        lock.withLock { h2[key].flatMap { $0.channel.isActive ? $0 : nil } }
+    }
+
+    func register(_ key: Key, _ connection: H2Connection) {
+        lock.withLock { h2[key] = connection }
+        connection.channel.closeFuture.whenComplete { [weak self, weak connection] _ in
+            guard let self, let connection else { return }
+            self.lock.withLock { if self.h2[key] === connection { self.h2[key] = nil } }
+        }
+    }
+
+    /// Closes everything idle (used when the proxy stops).
+    func closeAll() {
+        let (handlers, conns) = lock.withLock { () -> ([PooledHTTP1Handler], [H2Connection]) in
+            defer { idle = [:]; h2 = [:] }
+            return (idle.values.flatMap { $0 }, Array(h2.values))
+        }
+        handlers.forEach { $0.channel?.close(promise: nil) }
+        conns.forEach { $0.channel.close(promise: nil) }
+    }
+}
+
 enum UpstreamConnection {
+    private enum Conn {
+        case h1(PooledHTTP1Handler, reused: Bool)
+        case h2(UpstreamPool.H2Connection, reused: Bool)
+    }
+
     /// Sends `request` to the origin it names and reports the answer to `delegate`.
-    static func open(request: HTTPRequestRecord, env: ProxyEnvironment, loop: EventLoop, delegate: UpstreamDelegate) {
+    /// A reused connection that turns out to be dead before any response byte is retried once on a fresh one.
+    static func open(request: HTTPRequestRecord, env: ProxyEnvironment, loop: EventLoop, hostHeader: String? = nil, delegate: UpstreamDelegate) {
         let url = request.url
         guard let host = url.host, let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
@@ -46,34 +123,69 @@ enum UpstreamConnection {
             request.headers.removeAll { $0.name.caseInsensitiveCompare("Accept-Encoding") == .orderedSame }
             request.headers.append(HTTPHeader(name: "Accept-Encoding", value: "identity"))
         }
-        let sending = request
+        let target = Target(request: request, host: host, port: port, tls: useTLS, path: path, authority: hostHeader ?? authority,
+                            connectHost: host, key: .init(host: host, port: port, tls: useTLS, loop: ObjectIdentifier(loop)))
+        attempt(target, env: env, loop: loop, delegate: delegate, allowReuse: true)
+    }
 
+    private struct Target {
+        let request: HTTPRequestRecord
+        let host: String, port: Int, tls: Bool, path: String, authority: String, connectHost: String
+        let key: UpstreamPool.Key
+        /// HEAD answers carry a Content-Length with no body, which the HTTP/1 decoder cannot tell; those never reuse.
+        var poolable: Bool { request.method.uppercased() != "HEAD" }
+    }
+
+    private static func attempt(_ t: Target, env: ProxyEnvironment, loop: EventLoop, delegate: UpstreamDelegate, allowReuse: Bool) {
+        if allowReuse, t.poolable {
+            if let conn = env.pool.liveH2(t.key) {
+                return sendHTTP2(t, on: conn, env: env, delegate: Retrying(delegate) { attempt(t, env: env, loop: loop, delegate: delegate, allowReuse: false) })
+            }
+            if let handler = env.pool.takeIdle(t.key) {
+                return sendHTTP1(t, on: handler, reused: true, env: env,
+                                 delegate: Retrying(delegate) { attempt(t, env: env, loop: loop, delegate: delegate, allowReuse: false) })
+            }
+        }
+        connect(t, env: env, loop: loop, delegate: delegate)
+    }
+
+    private static func connect(_ t: Target, env: ProxyEnvironment, loop: EventLoop, delegate: UpstreamDelegate) {
         ClientBootstrap(group: loop)
             .channelInitializer { channel in
                 channel.eventLoop.makeCompletedFuture {
-                    if useTLS {
+                    if t.tls {
                         let ssl = try NIOSSLClientHandler(
                             context: env.upstreamH2SSLContext,
-                            serverHostname: ProxyFrontendHandler.isIPAddress(host) ? nil : host
+                            serverHostname: ProxyFrontendHandler.isIPAddress(t.host) ? nil : t.host
                         )
                         let alpn = ApplicationProtocolNegotiationHandler { result, channel in
                             if case .negotiated(let protocolName) = result, protocolName == "h2" {
-                                return sendHTTP2(sending, path: path, authority: authority, channel: channel, delegate: delegate)
+                                return channel.configureHTTP2Pipeline(mode: .client, inboundStreamInitializer: nil).map { multiplexer in
+                                    let conn = UpstreamPool.H2Connection(channel: channel, multiplexer: multiplexer)
+                                    env.pool.register(t.key, conn)
+                                    sendHTTP2(t, on: conn, env: env, delegate: delegate)
+                                }
                             }
-                            return sendHTTP1(sending, path: path, authority: authority, channel: channel, delegate: delegate)
+                            return installHTTP1(on: channel).map { handler in
+                                sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
+                            }
                         }
                         try channel.pipeline.syncOperations.addHandlers([ssl, alpn])
                     }
                 }
             }
-            .connect(host: host, port: port)
+            .connect(host: t.host, port: t.port)
             .whenComplete { result in
                 switch result {
                 case .failure(let error): delegate.upstreamFailed(error)
                 case .success(let channel):
-                    if !useTLS {
-                        sendHTTP1(sending, path: path, authority: authority, channel: channel, delegate: delegate)
-                            .whenFailure { delegate.upstreamFailed($0) }
+                    if !t.tls {
+                        installHTTP1(on: channel).whenComplete {
+                            switch $0 {
+                            case .success(let handler): sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
+                            case .failure(let error): delegate.upstreamFailed(error)
+                            }
+                        }
                     }
                 }
             }
@@ -81,37 +193,51 @@ enum UpstreamConnection {
 
     // MARK: HTTP/1.1
 
-    @discardableResult
-    private static func sendHTTP1(_ request: HTTPRequestRecord, path: String, authority: String, channel: Channel, delegate: UpstreamDelegate) -> EventLoopFuture<Void> {
-        var headers = HTTPHeaders()
-        for h in request.headers where !isPseudo(h.name) { headers.add(name: h.name, value: h.value) }
-        for name in ["Proxy-Connection", "Transfer-Encoding", "Content-Length", "Connection", "Keep-Alive", "Upgrade", "TE", "Host"] { headers.remove(name: name) }
-        headers.add(name: "Host", value: authority)
-        headers.add(name: "Connection", value: "close")
-        if !request.body.isEmpty || ["POST", "PUT", "PATCH"].contains(request.method.uppercased()) {
-            headers.add(name: "Content-Length", value: String(request.body.count))
-        }
-        let head = HTTPRequestHead(version: .http1_1, method: HTTPMethod(rawValue: request.method), uri: path, headers: headers)
-        let body = request.body
-        return channel.eventLoop.makeCompletedFuture {
+    private static func installHTTP1(on channel: Channel) -> EventLoopFuture<PooledHTTP1Handler> {
+        channel.eventLoop.makeCompletedFuture {
+            let handler = PooledHTTP1Handler()
             try channel.pipeline.syncOperations.addHandlers([
                 HTTPRequestEncoder(),
                 ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)),
-                HTTP1UpstreamHandler(delegate: delegate),
+                handler,
             ])
-        }.map {
-            channel.write(HTTPClientRequestPart.head(head), promise: nil)
-            if !body.isEmpty { channel.write(HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(bytes: body))), promise: nil) }
-            channel.writeAndFlush(HTTPClientRequestPart.end(nil), promise: nil)
+            return handler
         }
+    }
+
+    private static func sendHTTP1(_ t: Target, on handler: PooledHTTP1Handler, reused: Bool, env: ProxyEnvironment, delegate: UpstreamDelegate) {
+        guard let channel = handler.channel else { return delegate.upstreamFailed(UpstreamError.closed) }
+        let request = t.request
+        var headers = HTTPHeaders()
+        for h in request.headers where !isPseudo(h.name) { headers.add(name: h.name, value: h.value) }
+        for name in ["Proxy-Connection", "Transfer-Encoding", "Content-Length", "Connection", "Keep-Alive", "Upgrade", "TE", "Host"] { headers.remove(name: name) }
+        headers.add(name: "Host", value: t.authority)
+        if !t.poolable { headers.add(name: "Connection", value: "close") }
+        if !request.body.isEmpty || ["POST", "PUT", "PATCH"].contains(request.method.uppercased()) {
+            headers.add(name: "Content-Length", value: String(request.body.count))
+        }
+        let head = HTTPRequestHead(version: .http1_1, method: HTTPMethod(rawValue: request.method), uri: t.path, headers: headers)
+        let body = request.body
+        let key = t.key, pool = env.pool
+        handler.begin(delegate: delegate, mayReuse: t.poolable) { [weak handler] in
+            guard let handler else { return }
+            pool.release(key, handler)
+        } onDead: { [weak handler] in
+            guard let handler else { return }
+            pool.remove(key, handler)
+        }
+        channel.write(HTTPClientRequestPart.head(head), promise: nil)
+        if !body.isEmpty { channel.write(HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(bytes: body))), promise: nil) }
+        channel.writeAndFlush(HTTPClientRequestPart.end(nil), promise: nil)
     }
 
     // MARK: HTTP/2
 
-    private static func sendHTTP2(_ request: HTTPRequestRecord, path: String, authority: String, channel: Channel, delegate: UpstreamDelegate) -> EventLoopFuture<Void> {
+    private static func sendHTTP2(_ t: Target, on conn: UpstreamPool.H2Connection, env: ProxyEnvironment, delegate: UpstreamDelegate) {
+        let request = t.request
         var fields: [(String, String)] = [
             (":method", request.method), (":scheme", request.url.scheme ?? "https"),
-            (":authority", authority), (":path", path),
+            (":authority", t.authority), (":path", t.path),
         ]
         for h in request.headers where !isPseudo(h.name) {
             let name = h.name.lowercased()
@@ -122,42 +248,108 @@ enum UpstreamConnection {
         if !request.body.isEmpty { fields.append(("content-length", String(request.body.count))) }
         let headers = HPACKHeaders(fields)
         let body = request.body
+        let loop = conn.channel.eventLoop
 
-        return channel.configureHTTP2Pipeline(mode: .client, inboundStreamInitializer: nil).flatMap { multiplexer in
-            let streamReady = channel.eventLoop.makePromise(of: Channel.self)
-            multiplexer.createStreamChannel(promise: streamReady) { stream in
-                stream.pipeline.addHandler(HTTP2UpstreamHandler(delegate: delegate))
+        conn.active += 1
+        conn.idleToken += 1
+        let streamReady = loop.makePromise(of: Channel.self)
+        conn.multiplexer.createStreamChannel(promise: streamReady) { stream in
+            stream.pipeline.addHandler(HTTP2UpstreamHandler(delegate: delegate))
+        }
+        streamReady.futureResult.whenComplete { result in
+            switch result {
+            case .failure(let error):
+                conn.active -= 1
+                delegate.upstreamFailed(error)
+            case .success(let stream):
+                stream.closeFuture.whenComplete { _ in
+                    conn.active -= 1
+                    guard conn.active == 0 else { return }
+                    let token = conn.idleToken
+                    loop.scheduleTask(in: .seconds(60)) {
+                        if conn.active == 0, conn.idleToken == token { conn.channel.close(promise: nil) }
+                    }
+                }
+                stream.write(HTTP2Frame.FramePayload.headers(.init(headers: headers, endStream: body.isEmpty)), promise: nil)
+                if !body.isEmpty {
+                    stream.write(HTTP2Frame.FramePayload.data(.init(data: .byteBuffer(ByteBuffer(bytes: body)), endStream: true)), promise: nil)
+                }
+                stream.flush()
             }
-            return streamReady.futureResult
-        }.map { stream in
-            stream.write(HTTP2Frame.FramePayload.headers(.init(headers: headers, endStream: body.isEmpty)), promise: nil)
-            if !body.isEmpty {
-                stream.write(HTTP2Frame.FramePayload.data(.init(data: .byteBuffer(ByteBuffer(bytes: body)), endStream: true)), promise: nil)
-            }
-            stream.flush()
+        }
+    }
+
+    /// Passes everything through; if the connection dies before the response starts, runs `retry` instead of failing.
+    private final class Retrying: UpstreamDelegate {
+        private let inner: UpstreamDelegate
+        private var retry: (() -> Void)?
+        private var sawHead = false
+        init(_ inner: UpstreamDelegate, retry: @escaping () -> Void) { self.inner = inner; self.retry = retry }
+        func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) { sawHead = true; inner.upstreamHead(status: status, reason: reason, headers: headers) }
+        func upstreamBody(_ bytes: ByteBuffer) { inner.upstreamBody(bytes) }
+        func upstreamEnd(trailers: [HTTPHeader]) { inner.upstreamEnd(trailers: trailers) }
+        func upstreamFailed(_ error: Error) {
+            if !sawHead, let retry { self.retry = nil; return retry() }
+            inner.upstreamFailed(error)
         }
     }
 }
 
-/// Reports an HTTP/1.1 origin response and hangs up (the request asked for `Connection: close`).
-private final class HTTP1UpstreamHandler: ChannelInboundHandler {
+/// One HTTP/1.1 origin connection that can carry several requests in turn. Idle between them.
+final class PooledHTTP1Handler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
+    private(set) var channel: Channel?
     private var delegate: UpstreamDelegate?
-    init(delegate: UpstreamDelegate) { self.delegate = delegate }
+    private var onIdle: (() -> Void)?
+    private var onDead: (() -> Void)?
+    private var mayReuse = false
+    private var keepAlive = false
+    private var ignoringInformational = false
+    private var idleToken = 0
+
+    var isUsable: Bool { channel?.isActive == true && delegate == nil }
+
+    func handlerAdded(context: ChannelHandlerContext) { channel = context.channel }
+
+    func begin(delegate: UpstreamDelegate, mayReuse: Bool, onIdle: @escaping () -> Void, onDead: @escaping () -> Void) {
+        idleToken += 1
+        self.delegate = delegate
+        self.mayReuse = mayReuse
+        self.onIdle = onIdle
+        self.onDead = onDead
+        keepAlive = false
+    }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        guard delegate != nil else { return context.close(promise: nil) }   // bytes nobody asked for
         switch unwrapInboundIn(data) {
         case .head(let h):
+            if h.status.code < 200 && h.status.code != 101 { ignoringInformational = true; return }
+            keepAlive = mayReuse && h.version == .http1_1 && !(h.headers[canonicalForm: "connection"].contains { $0.lowercased() == "close" })
             delegate?.upstreamHead(
                 status: Int(h.status.code), reason: h.status.reasonPhrase,
                 headers: h.headers.map { HTTPHeader(name: $0.name, value: $0.value) }
             )
-        case .body(let buf): delegate?.upstreamBody(buf)
+        case .body(let buf):
+            if !ignoringInformational { delegate?.upstreamBody(buf) }
         case .end(let trailers):
+            if ignoringInformational { ignoringInformational = false; return }
             let d = delegate
             delegate = nil
+            let release = onIdle
+            onIdle = nil
+            onDead = nil
             d?.upstreamEnd(trailers: trailers?.map { HTTPHeader(name: $0.name, value: $0.value) } ?? [])
-            context.close(promise: nil)
+            if keepAlive, context.channel.isActive {
+                idleToken += 1
+                let token = idleToken
+                context.eventLoop.scheduleTask(in: UpstreamPool.idleLifetime) { [weak self] in
+                    if let self, self.delegate == nil, self.idleToken == token { self.onDead?(); context.close(promise: nil) }
+                }
+                release?()
+            } else {
+                context.close(promise: nil)
+            }
         }
     }
 
@@ -169,11 +361,14 @@ private final class HTTP1UpstreamHandler: ChannelInboundHandler {
     private func fail(_ error: Error) {
         let d = delegate
         delegate = nil
+        onDead?()
+        onDead = nil
+        onIdle = nil
         d?.upstreamFailed(error)
     }
 }
 
-/// Reads one HTTP/2 response stream from an origin.
+/// Reads one HTTP/2 response stream from an origin. The connection stays open for other streams.
 private final class HTTP2UpstreamHandler: ChannelInboundHandler {
     typealias InboundIn = HTTP2Frame.FramePayload
     private var delegate: UpstreamDelegate?
@@ -205,13 +400,13 @@ private final class HTTP2UpstreamHandler: ChannelInboundHandler {
         let d = delegate
         delegate = nil
         d?.upstreamEnd(trailers: trailers)
-        context.channel.parent?.close(promise: nil)
+        context.close(promise: nil)
     }
     private func fail(_ context: ChannelHandlerContext, _ error: Error) {
         let d = delegate
         delegate = nil
         d?.upstreamFailed(error)
-        context.channel.parent?.close(promise: nil)
+        context.close(promise: nil)
     }
     func channelInactive(context: ChannelHandlerContext) { fail(context, UpstreamError.closed) }
     func errorCaught(context: ChannelHandlerContext, error: Error) { fail(context, error) }

@@ -26,7 +26,8 @@ public final class ProxyServer: @unchecked Sendable {
         ca: CertificateAuthority? = nil,
         upstreamTLS: TLSConfiguration? = nil,
         sslProxying: SSLProxyingPolicy = SSLProxyingPolicy(),
-        rules: TrafficRules = TrafficRules()
+        rules: TrafficRules = TrafficRules(),
+        threads: Int = System.coreCount
     ) throws {
         var tls = upstreamTLS ?? TLSConfiguration.makeClientConfiguration()
         tls.applicationProtocols = ["http/1.1"]
@@ -35,7 +36,7 @@ public final class ProxyServer: @unchecked Sendable {
         self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: http1, upstreamH2SSLContext: try NIOSSLContext(configuration: tls), rules: rules)
         self.host = host
         self.requestedPort = port
-        self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        self.group = MultiThreadedEventLoopGroup(numberOfThreads: max(1, threads))
     }
 
     /// Starts listening and returns the bound port (useful with port 0).
@@ -60,6 +61,7 @@ public final class ProxyServer: @unchecked Sendable {
     }
 
     public func stop() async throws {
+        environment.pool.closeAll()
         try await channel?.close().get()
         channel = nil
         try await group.shutdownGracefully()

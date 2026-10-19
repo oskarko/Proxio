@@ -93,3 +93,32 @@ private func waitUntil(_ timeout: TimeInterval = 5, _ condition: () -> Bool) asy
     try await upstream.close().get()
     try await group.shutdownGracefully()
 }
+
+@Test func originConnectionIsReusedAcrossClientConnections() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let accepted = NIOLockedValueBox(0)
+    let upstream = try await ServerBootstrap(group: group)
+        .childChannelInitializer { ch in
+            accepted.withLockedValue { $0 += 1 }
+            return ch.pipeline.configureHTTPServerPipeline().flatMap { ch.pipeline.addHandler(KeepOpenHandler()) }
+        }
+        .bind(host: "127.0.0.1", port: 0).get()
+    let upstreamPort = upstream.localAddress!.port!
+    let proxy = try ProxyServer(store: FlowStore(), port: 0, threads: 1)
+    let proxyPort = try await proxy.start()
+
+    // Each client hangs up after one answer; the proxy keeps its origin connection for the next one.
+    for path in ["/a", "/b", "/c"] {
+        let box = TextBox()
+        let client = try await ClientBootstrap(group: group)
+            .channelInitializer { $0.pipeline.addHandler(box) }
+            .connect(host: "127.0.0.1", port: proxyPort).get()
+        try await client.writeAndFlush(ByteBuffer(string: "GET http://127.0.0.1:\(upstreamPort)\(path) HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")).get()
+        #expect(await waitUntil { box.value.contains("X-Path: \(path)") && !client.isActive })
+    }
+    #expect(accepted.withLockedValue { $0 } == 1)
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}
