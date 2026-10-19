@@ -55,13 +55,21 @@ public struct Flow: Sendable, Identifiable, Equatable, Codable {
     public var response: HTTPResponseRecord?
     /// Rules that altered this exchange, e.g. "Map Local".
     public var notes: [String]
+    /// Frames seen after a WebSocket upgrade (101), oldest first.
+    public var messages: [WebSocketMessage]
 
-    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil, notes: [String] = []) {
+    public var isWebSocket: Bool {
+        response?.status == 101
+            && request.headers.contains { $0.name.caseInsensitiveCompare("Upgrade") == .orderedSame && $0.value.lowercased() == "websocket" }
+    }
+
+    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil, notes: [String] = [], messages: [WebSocketMessage] = []) {
         self.id = id
         self.startedAt = startedAt
         self.duration = duration
         self.request = request
         self.response = response
         self.notes = notes
+        self.messages = messages
     }
 }

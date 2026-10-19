@@ -13,6 +13,14 @@ public actor FlowStore {
         if let i = flows.firstIndex(where: { $0.id == flow.id }) { flows[i] = flow; notify() }
     }
 
+    /// Adds a WebSocket message to an existing flow; `closed` also fixes its duration.
+    public func append(_ message: WebSocketMessage, to id: UUID) {
+        guard let i = flows.firstIndex(where: { $0.id == id }) else { return }
+        flows[i].messages.append(message)
+        flows[i].duration = message.timestamp.timeIntervalSince(flows[i].startedAt)
+        notify()
+    }
+
     public func all() -> [Flow] { flows }
 
     public func clear() { flows.removeAll(); notify() }

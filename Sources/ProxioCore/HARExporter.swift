@@ -40,7 +40,14 @@ public enum HARExporter {
                 ] as [String: Any],
                 "cache": [String: Any](),
                 "timings": ["send": 0, "wait": f.duration * 1000, "receive": 0],
-            ]
+            ].merging(f.messages.isEmpty ? [:] : ["_webSocketMessages": f.messages.map { m -> [String: Any] in
+                [
+                    "type": m.direction == .sent ? "send" : "receive",
+                    "time": m.timestamp.timeIntervalSince1970,
+                    "opcode": m.kind == .text ? 1 : m.kind == .binary ? 2 : m.kind == .close ? 8 : m.kind == .ping ? 9 : 10,
+                    "data": m.text ?? m.payload.base64EncodedString(),
+                ]
+            }] as [String: Any]) { $1 }
         }
 
         let har: [String: Any] = [

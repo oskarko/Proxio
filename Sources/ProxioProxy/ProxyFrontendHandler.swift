@@ -212,7 +212,12 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         var headers = HTTPHeaders()
         for h in request.headers { headers.add(name: h.name, value: h.value) }
         for name in ["Proxy-Connection", "Transfer-Encoding", "Content-Length", "Connection"] { headers.remove(name: name) }
-        headers.add(name: "Connection", value: "close")
+        if Self.isWebSocketUpgrade(request) {
+            headers.add(name: "Connection", value: "Upgrade")
+            headers.remove(name: "Sec-WebSocket-Extensions")   // no permessage-deflate: frames stay readable
+        } else {
+            headers.add(name: "Connection", value: "close")
+        }
         if !request.body.isEmpty || ["POST", "PUT", "PATCH"].contains(request.method.uppercased()) {
             headers.add(name: "Content-Length", value: String(request.body.count))
         }
@@ -240,7 +245,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                         ))
                     }
                     handlers.append(HTTPRequestEncoder())
-                    handlers.append(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .dropBytes)))
+                    handlers.append(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)))
                     handlers.append(UpstreamResponseHandler(client: client, flow: flow, environment: env))
                     try ch.pipeline.syncOperations.addHandlers(handlers)
                     return ch.eventLoop.makeSucceededVoidFuture()
@@ -269,6 +274,10 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         headers.add(name: "Connection", value: "close")
         context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: status, headers: headers))), promise: nil)
         context.writeAndFlush(wrapOutboundOut(.end(nil))).whenComplete { _ in context.close(promise: nil) }
+    }
+
+    static func isWebSocketUpgrade(_ request: HTTPRequestRecord) -> Bool {
+        request.headers.contains { $0.name.caseInsensitiveCompare("Upgrade") == .orderedSame && $0.value.lowercased() == "websocket" }
     }
 
     static func hostPort(from authority: String, defaultPort: Int) -> (String, Int)? {
@@ -305,7 +314,7 @@ final class RelayHandler: ChannelInboundHandler {
 
 /// Streams the upstream response to the client while recording a copy.
 /// When a response breakpoint matches, the whole response is held until the user releases it.
-final class UpstreamResponseHandler: ChannelInboundHandler {
+final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = HTTPClientResponsePart
 
     private let client: Channel
@@ -314,6 +323,7 @@ final class UpstreamResponseHandler: ChannelInboundHandler {
     private let pauseHandler: BreakpointHandler?
     private var response: HTTPResponseRecord?
     private var body = Data()
+    private var upgrading = false
 
     init(client: Channel, flow: Flow, environment: ProxyEnvironment) {
         self.client = client
@@ -329,14 +339,26 @@ final class UpstreamResponseHandler: ChannelInboundHandler {
                 status: Int(h.status.code), reason: h.status.reasonPhrase,
                 headers: h.headers.map { HTTPHeader(name: $0.name, value: $0.value) }
             )
+            if h.status.code == 101, ProxyFrontendHandler.isWebSocketUpgrade(flow.request) {
+                upgrading = true
+                context.channel.setOption(ChannelOptions.autoRead, value: false).whenComplete { _ in }
+                return
+            }
             guard pauseHandler == nil else { return }
             var headers = h.headers
             headers.replaceOrAdd(name: "Connection", value: "close")
             client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: h.status, headers: headers)), promise: nil)
         case .body(let buf):
+            if upgrading { return }
             body.append(contentsOf: buf.readableBytesView)
             if pauseHandler == nil { client.write(HTTPServerResponsePart.body(.byteBuffer(buf)), promise: nil) }
         case .end:
+            if upgrading, let response {
+                flow.response = response
+                flow.duration = Date().timeIntervalSince(flow.startedAt)
+                WebSocketBridge.start(upstream: context, client: client, response: response, flow: flow, store: store)
+                return
+            }
             response?.body = body
             if let pauseHandler, let held = response {
                 let request = flow.request, client = self.client

@@ -4,6 +4,7 @@ import NIOCore
 import NIOPosix
 import NIOHTTP1
 import NIOSSL
+import NIOConcurrencyHelpers
 import ProxioCore
 @testable import ProxioProxy
 
@@ -567,5 +568,95 @@ private final class RedirectHandler: ChannelInboundHandler {
     let failed = await RequestSender().send(HTTPRequestRecord(method: "GET", url: URL(string: "http://127.0.0.1:\(port)/")!), note: "Repeat")
     #expect(failed.response == nil)
     #expect(failed.notes.contains { $0.hasPrefix("Failed:") })
+    try await group.shutdownGracefully()
+}
+
+// MARK: WebSocket
+
+/// Raw origin: answers the upgrade with 101 and echoes every text frame as "echo:<text>".
+private final class WebSocketEchoOrigin: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+    let requestText: NIOLockedValueBox<String>
+    private var pending = Data()
+    private var upgraded = false
+    private var parser = WebSocketFrameParser(direction: .sent)
+    init(requestText: NIOLockedValueBox<String>) { self.requestText = requestText }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var buf = unwrapInboundIn(data)
+        let bytes = Data(buf.readBytes(length: buf.readableBytes) ?? [])
+        if !upgraded {
+            pending.append(bytes)
+            guard let end = pending.range(of: Data("\r\n\r\n".utf8)) else { return }
+            requestText.withLockedValue { $0 = String(decoding: pending[..<end.lowerBound], as: UTF8.self) }
+            let rest = pending[end.upperBound...]
+            upgraded = true
+            context.writeAndFlush(wrapOutboundOut(ByteBuffer(string: "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: test\r\n\r\n")), promise: nil)
+            handle(rest, context: context)
+        } else {
+            handle(bytes, context: context)
+        }
+    }
+
+    private func handle(_ bytes: some Sequence<UInt8>, context: ChannelHandlerContext) {
+        for message in parser.feed(bytes) where message.kind == .text {
+            let reply = WebSocketFrame.encode(opcode: 1, payload: Data(("echo:" + (message.text ?? "")).utf8))
+            context.writeAndFlush(wrapOutboundOut(ByteBuffer(bytes: reply)), promise: nil)
+        }
+    }
+    typealias OutboundOut = ByteBuffer
+}
+
+private final class BytesBox: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+    let received = NIOLockedValueBox(Data())
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var buf = unwrapInboundIn(data)
+        received.withLockedValue { $0.append(contentsOf: buf.readBytes(length: buf.readableBytes) ?? []) }
+    }
+}
+
+private func waitFor(_ condition: () async -> Bool) async -> Bool {
+    for _ in 0..<100 { if await condition() { return true }; try? await Task.sleep(nanoseconds: 50_000_000) }
+    return await condition()
+}
+
+@Test func relaysWebSocketFramesAndRecordsMessages() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let requestText = NIOLockedValueBox("")
+    let origin = try await ServerBootstrap(group: group)
+        .childChannelInitializer { $0.pipeline.addHandler(WebSocketEchoOrigin(requestText: requestText)) }
+        .bind(host: "127.0.0.1", port: 0).get()
+    let originPort = origin.localAddress!.port!
+
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0)
+    let proxyPort = try await proxy.start()
+
+    let box = BytesBox()
+    let client = try await ClientBootstrap(group: group)
+        .channelInitializer { $0.pipeline.addHandler(box) }
+        .connect(host: "127.0.0.1", port: proxyPort).get()
+    let request = "GET http://127.0.0.1:\(originPort)/ws HTTP/1.1\r\nHost: 127.0.0.1:\(originPort)\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Extensions: permessage-deflate\r\n\r\n"
+    try await client.writeAndFlush(ByteBuffer(string: request)).get()
+    #expect(await waitFor { String(decoding: box.received.withLockedValue { $0 }, as: UTF8.self).contains("101 Switching Protocols") })
+
+    box.received.withLockedValue { $0 = Data() }
+    let frame = WebSocketFrame.encode(opcode: 1, payload: Data("ping-1".utf8), maskKey: [5, 6, 7, 8])
+    try await client.writeAndFlush(ByteBuffer(bytes: frame)).get()
+    let echo = WebSocketFrame.encode(opcode: 1, payload: Data("echo:ping-1".utf8))
+    #expect(await waitFor { box.received.withLockedValue { $0 } == echo })
+
+    #expect(await waitFor { await store.all().first?.messages.count == 2 })
+    let flow = try #require(await store.all().first)
+    #expect(flow.isWebSocket)
+    #expect(flow.response?.status == 101)
+    #expect(flow.messages.map(\.direction) == [.sent, .received])
+    #expect(flow.messages.map(\.text) == ["ping-1", "echo:ping-1"])
+    #expect(!requestText.withLockedValue { $0 }.lowercased().contains("permessage-deflate"))
+
+    try await client.close()
+    try await proxy.stop()
+    try await origin.close()
     try await group.shutdownGracefully()
 }
