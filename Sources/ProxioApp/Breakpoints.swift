@@ -159,19 +159,9 @@ struct PausedEditor: View {
     }
 
     private func fill(_ list: [HTTPHeader], _ body: Data) {
-        headers = list.map { "\($0.name): \($0.value)" }.joined(separator: "\n")
+        headers = HeaderText.format(list)
         original = body
         if let text = String(data: body, encoding: .utf8) { bodyText = text } else { bodyIsBinary = true }
-    }
-
-    private func parsedHeaders() -> [HTTPHeader] {
-        headers.split(whereSeparator: \.isNewline).compactMap { line in
-            guard let colon = line.firstIndex(of: ":") else { return nil }
-            return HTTPHeader(
-                name: line[..<colon].trimmingCharacters(in: .whitespaces),
-                value: line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-            )
-        }
     }
 
     private func execute() {
@@ -182,11 +172,11 @@ struct PausedEditor: View {
                 error = "The URL is not valid"; return
             }
             r.method = method.trimmingCharacters(in: .whitespaces).uppercased()
-            r.url = u; r.headers = parsedHeaders(); r.body = body
+            r.url = u; r.headers = HeaderText.parse(headers); r.body = body
             model.release(message, with: .request(r))
         case .response(var r, _):
             guard (100...599).contains(status) else { error = "Status must be between 100 and 599"; return }
-            r.status = status; r.reason = reason; r.headers = parsedHeaders(); r.body = body
+            r.status = status; r.reason = reason; r.headers = HeaderText.parse(headers); r.body = body
             model.release(message, with: .response(r))
         }
     }

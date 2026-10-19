@@ -147,19 +147,13 @@ private struct MapLocalEditor: View {
         .padding(12)
         .onAppear {
             useFile = rule.filePath != nil
-            headersText = rule.headers.map { "\($0.name): \($0.value)" }.joined(separator: "\n")
+            headersText = HeaderText.format(rule.headers)
         }
         .onChange(of: useFile) { _, file in
             if !file { rule.filePath = nil } else if rule.filePath == nil { rule.filePath = "" }
         }
         .onChange(of: headersText) { _, text in
-            rule.headers = text.split(whereSeparator: \.isNewline).compactMap { line in
-                guard let colon = line.firstIndex(of: ":") else { return nil }
-                return HTTPHeader(
-                    name: line[..<colon].trimmingCharacters(in: .whitespaces),
-                    value: line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-                )
-            }
+            rule.headers = HeaderText.parse(text)
         }
     }
 

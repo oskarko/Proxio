@@ -488,3 +488,53 @@ private func proxiedSession(port: Int) -> URLSession {
     #expect(String(data: data, encoding: .utf8) == "tweaked")
     try await proxy.stop()
 }
+
+// MARK: - Repeat / Compose
+
+@Test func requestSenderSendsEditedRequestAndRecordsTheExchange() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startEchoUpstream(group)
+    let port = upstream.localAddress!.port!
+
+    let record = HTTPRequestRecord(
+        method: "POST", url: URL(string: "http://127.0.0.1:\(port)/compose?z=1")!,
+        headers: [HTTPHeader(name: "X-Edit", value: "composed")], body: Data("payload".utf8)
+    )
+    let flow = await RequestSender().send(record, note: "Compose")
+    #expect(flow.response?.status == 200)
+    #expect(flow.response.flatMap { String(data: $0.body, encoding: .utf8) } == "POST /compose?z=1 x-edit=composed host=127.0.0.1:\(port) body=payload")
+    #expect(flow.notes == ["Compose"])
+    #expect(flow.duration > 0)
+
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}
+
+private final class RedirectHandler: ChannelInboundHandler {
+    typealias InboundIn = HTTPServerRequestPart
+    typealias OutboundOut = HTTPServerResponsePart
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        guard case .end = unwrapInboundIn(data) else { return }
+        let headers = HTTPHeaders([("Location", "/elsewhere"), ("Content-Length", "0")])
+        context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: .found, headers: headers))), promise: nil)
+        context.writeAndFlush(wrapOutboundOut(.end(nil))).whenComplete { _ in context.close(promise: nil) }
+    }
+}
+
+@Test func requestSenderKeepsRedirectsAndReportsFailures() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await ServerBootstrap(group: group)
+        .childChannelInitializer { ch in ch.pipeline.configureHTTPServerPipeline().flatMap { ch.pipeline.addHandler(RedirectHandler()) } }
+        .bind(host: "127.0.0.1", port: 0).get()
+    let port = upstream.localAddress!.port!
+
+    let redirected = await RequestSender().send(HTTPRequestRecord(method: "GET", url: URL(string: "http://127.0.0.1:\(port)/")!), note: "Repeat")
+    #expect(redirected.response?.status == 302)
+    #expect(redirected.response?.headers.contains { $0.name.lowercased() == "location" && $0.value == "/elsewhere" } == true)
+
+    try await upstream.close().get()
+    let failed = await RequestSender().send(HTTPRequestRecord(method: "GET", url: URL(string: "http://127.0.0.1:\(port)/")!), note: "Repeat")
+    #expect(failed.response == nil)
+    #expect(failed.notes.contains { $0.hasPrefix("Failed:") })
+    try await group.shutdownGracefully()
+}

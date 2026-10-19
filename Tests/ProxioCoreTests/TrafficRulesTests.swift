@@ -79,3 +79,9 @@ private struct NoopHandler: BreakpointHandler {
     let missing = MapLocalRule(matcher: RequestMatcher(urlPattern: "*"), filePath: "/nonexistent/file.json").makeResponse()
     #expect(missing.status == 500)
 }
+
+@Test func headerTextRoundTripsAndSkipsJunk() {
+    let headers = [HTTPHeader(name: "Accept", value: "*/*"), HTTPHeader(name: "X-Time", value: "10:30:00")]
+    #expect(HeaderText.parse(HeaderText.format(headers)) == headers)
+    #expect(HeaderText.parse("no colon here\n: empty name\n  X-A :  1  ") == [HTTPHeader(name: "X-A", value: "1")])
+}
