@@ -49,29 +49,63 @@ public final class CertificateAuthority: @unchecked Sendable {
         self.certificate = certificate
     }
 
-    /// Loads `ca.pem` / `ca-key.pem` from `directory`, creating them on first use.
-    public static func loadOrCreate(in directory: URL = defaultDirectory) throws -> CertificateAuthority {
+    /// Loads `ca.pem` from `directory` and the private key from `keyStore` (the login
+    /// keychain by default), creating both on first use.
+    ///
+    /// A legacy `ca-key.pem` is only moved into the key store if `confirmMigration`
+    /// returns true; otherwise the file keeps being used, untouched.
+    public static func loadOrCreate(
+        in directory: URL = defaultDirectory,
+        keyStore: CAKeyStore = KeychainKeyStore(),
+        confirmMigration: () -> Bool = { false }
+    ) throws -> CertificateAuthority {
         let fm = FileManager.default
         let certURL = directory.appendingPathComponent("ca.pem")
-        let keyURL = directory.appendingPathComponent("ca-key.pem")
-        if fm.fileExists(atPath: certURL.path), fm.fileExists(atPath: keyURL.path) {
+        let legacyURL = directory.appendingPathComponent("ca-key.pem")
+        let certExists = fm.fileExists(atPath: certURL.path)
+
+        if certExists, let raw = try keyStore.load() {
             let cert = try Certificate(pemEncoded: String(contentsOf: certURL, encoding: .utf8))
-            let key = try P256.Signing.PrivateKey(pemRepresentation: String(contentsOf: keyURL, encoding: .utf8))
-            return CertificateAuthority(key: key, certificate: cert)
+            return CertificateAuthority(key: try P256.Signing.PrivateKey(rawRepresentation: raw), certificate: cert)
+        }
+        if certExists, fm.fileExists(atPath: legacyURL.path) {
+            let cert = try Certificate(pemEncoded: String(contentsOf: certURL, encoding: .utf8))
+            let key = try P256.Signing.PrivateKey(pemRepresentation: String(contentsOf: legacyURL, encoding: .utf8))
+            let ca = CertificateAuthority(key: key, certificate: cert)
+            if confirmMigration() { try ca.migrateLegacyKey(at: legacyURL, to: keyStore) }
+            return ca
         }
         let ca = try CertificateAuthority()
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        try keyStore.save(ca.key.rawRepresentation)
         try ca.rootCertificatePEM.write(to: certURL, atomically: true, encoding: .utf8)
-        try ca.rootKeyPEM.write(to: keyURL, atomically: true, encoding: .utf8)
-        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: keyURL.path)
         return ca
     }
+
+    /// True when a plaintext `ca-key.pem` still exists in `directory`.
+    public static func hasLegacyKey(in directory: URL = defaultDirectory) -> Bool {
+        FileManager.default.fileExists(atPath: directory.appendingPathComponent("ca-key.pem").path)
+    }
+
+    /// Saves the key to `keyStore`, verifies it reads back identically, then overwrites
+    /// and removes the plaintext file.
+    func migrateLegacyKey(at url: URL, to keyStore: CAKeyStore) throws {
+        let raw = key.rawRepresentation
+        try keyStore.save(raw)
+        guard try keyStore.load() == raw else {
+            throw CAKeyStoreError(operation: "verify", status: errSecInternalError)
+        }
+        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+        try? Data(count: max(size, 1)).write(to: url)
+        try FileManager.default.removeItem(at: url)
+    }
+
+    /// Plaintext PEM of the key; only used to build legacy layouts in tests.
+    var rootKeyPEM: String { key.pemRepresentation }
 
     public var rootCertificatePEM: String {
         get throws { try certificate.serializeAsPEM().pemString }
     }
-
-    public var rootKeyPEM: String { key.pemRepresentation }
 
     /// TLS server context presenting a leaf certificate for `host`, cached per host.
     public func serverContext(for host: String) throws -> NIOSSLContext {

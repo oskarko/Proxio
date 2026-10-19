@@ -8,7 +8,7 @@ setlinebuf(stdout)
 let usage = """
 Usage:
   proxio-cli run [port] [--mitm] [--include PATTERN]... [--exclude PATTERN]... [--system-proxy] [--yes]
-  proxio-cli ca path|status|install|uninstall [--yes]
+  proxio-cli ca path|status|install|migrate|uninstall [--yes]
   proxio-cli system-proxy status|on [port]|off [--yes]
 
 Anything that changes your system (keychain, network settings) prints the exact
@@ -23,6 +23,11 @@ func fail(_ message: String) -> Never {
 var args = Array(CommandLine.arguments.dropFirst())
 let assumeYes = args.contains("--yes")
 args.removeAll { $0 == "--yes" }
+
+func confirmKeyMigration() -> Bool {
+    print("Found a plaintext CA key (ca-key.pem). Move it into your login keychain and delete the file?")
+    return confirm("Migrate?")
+}
 
 func confirm(_ question: String) -> Bool {
     if assumeYes { return true }
@@ -82,14 +87,21 @@ case "ca":
         guard FileManager.default.fileExists(atPath: caCertificate.path) else { print("No CA yet. Run `proxio-cli run --mitm` once to create it."); break }
         print(try CATrust().isTrusted(certificate: caCertificate) ? "trusted" : "not trusted")
     case "install":
-        _ = try CertificateAuthority.loadOrCreate()
+        _ = try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration)
         let trust = CATrust()
         print("This adds the Proxio root CA as a trusted root in your login keychain by running:")
         print("  " + trust.installCommand(certificate: caCertificate).joined(separator: " "))
-        print("While trusted, anyone holding \(caCertificate.deletingLastPathComponent().path)/ca-key.pem can impersonate any site to this Mac.")
+        print("While trusted, anyone who can read the CA private key can impersonate any site to this Mac.")
+        print(CertificateAuthority.hasLegacyKey()
+            ? "The key is still the plaintext file \(caCertificate.deletingLastPathComponent().path)/ca-key.pem (run `proxio-cli ca migrate` to move it into your Keychain)."
+            : "The key is stored in your login keychain.")
         guard confirm("Proceed?") else { fail("Cancelled.") }
         try trust.install(certificate: caCertificate)
         print("Installed. macOS may have asked for your password.")
+    case "migrate":
+        guard CertificateAuthority.hasLegacyKey() else { print("Nothing to migrate: no ca-key.pem found."); break }
+        _ = try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration)
+        print(CertificateAuthority.hasLegacyKey() ? "Not migrated." : "Key moved into your login keychain and ca-key.pem deleted.")
     case "uninstall":
         guard confirm("Remove the Proxio root CA from your login keychain?") else { fail("Cancelled.") }
         try CATrust().uninstall(certificate: caCertificate)
@@ -115,7 +127,7 @@ case "system-proxy":
 case "run":
     let port = rest.compactMap { Int($0) }.first ?? 9090
     let useMITM = rest.contains("--mitm")
-    let ca = useMITM ? try CertificateAuthority.loadOrCreate() : nil
+    let ca = useMITM ? try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration) : nil
     let rules = SSLProxyingRules(include: patterns("--include"), exclude: patterns("--exclude"), interceptByDefault: values(of: "--include").isEmpty)
     let store = FlowStore()
     let server = try ProxyServer(store: store, port: port, ca: ca, sslProxying: SSLProxyingPolicy(rules))

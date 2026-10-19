@@ -159,17 +159,48 @@ private func nioCert(_ pem: String) throws -> NIOSSLCertificate {
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("proxio-ca-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: dir) }
 
-    let ca = try CertificateAuthority.loadOrCreate(in: dir)
+    let keys = InMemoryKeyStore()
+    let ca = try CertificateAuthority.loadOrCreate(in: dir, keyStore: keys)
     _ = try ca.serverContext(for: "example.com")
     _ = try ca.serverContext(for: "127.0.0.1")
     _ = try ca.serverContext(for: "::1")
     let pem = try ca.rootCertificatePEM
     #expect(pem.hasPrefix("-----BEGIN CERTIFICATE-----"))
 
-    let reloaded = try CertificateAuthority.loadOrCreate(in: dir)
+    let reloaded = try CertificateAuthority.loadOrCreate(in: dir, keyStore: keys)
     #expect(try reloaded.rootCertificatePEM == pem)
-    let attrs = try FileManager.default.attributesOfItem(atPath: dir.appendingPathComponent("ca-key.pem").path)
-    #expect((attrs[.posixPermissions] as? Int) == 0o600)
+    #expect(try keys.load() != nil)
+    #expect(!CertificateAuthority.hasLegacyKey(in: dir))
+    #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("ca-key.pem").path))
+}
+
+@Test func legacyKeyFileIsMigratedOnlyWhenConfirmed() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("proxio-ca-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+    // Build a legacy layout: ca.pem + ca-key.pem, nothing in the key store.
+    let original = try CertificateAuthority()
+    let pem = try original.rootCertificatePEM
+    try pem.write(to: dir.appendingPathComponent("ca.pem"), atomically: true, encoding: .utf8)
+    try original.rootKeyPEM.write(to: dir.appendingPathComponent("ca-key.pem"), atomically: true, encoding: .utf8)
+    let keys = InMemoryKeyStore()
+
+    // Declined: file stays, store stays empty, the CA still works.
+    let declined = try CertificateAuthority.loadOrCreate(in: dir, keyStore: keys, confirmMigration: { false })
+    #expect(try declined.rootCertificatePEM == pem)
+    #expect(CertificateAuthority.hasLegacyKey(in: dir))
+    #expect(try keys.load() == nil)
+
+    // Accepted: key moves to the store and the file is gone.
+    let migrated = try CertificateAuthority.loadOrCreate(in: dir, keyStore: keys, confirmMigration: { true })
+    #expect(try migrated.rootCertificatePEM == pem)
+    #expect(!CertificateAuthority.hasLegacyKey(in: dir))
+    #expect(try keys.load() != nil)
+
+    // Later loads use the store and keep the same root.
+    let again = try CertificateAuthority.loadOrCreate(in: dir, keyStore: keys)
+    #expect(try again.rootCertificatePEM == pem)
 }
 
 @Test func interceptsHTTPSAndRecordsDecryptedFlow() async throws {

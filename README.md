@@ -14,7 +14,7 @@ swift run proxio-cli 9090 --mitm
 curl -x http://127.0.0.1:9090 --cacert "$HOME/Library/Application Support/Proxio/ca.pem" https://example.com/
 ```
 
-The root CA is never installed or trusted automatically. Clients only accept intercepted TLS if you explicitly trust `ca.pem`. Keep `ca-key.pem` private (it is written with mode 0600): anyone holding it can impersonate sites to a device that trusts the CA.
+The root CA is never installed or trusted automatically. Clients only accept intercepted TLS if you explicitly trust `ca.pem`. The CA private key is stored in your login keychain (service `dev.proxio.ca`), not on disk; only the public `ca.pem` is a file. Anyone who can read the key can impersonate sites to a device that trusts the CA. Older installs with a plaintext `ca-key.pem` keep working and are only migrated after you confirm (`proxio-cli ca migrate`, or the prompt in the app); the file is then overwritten and deleted.
 
 Proxio is an independent clean-room project. It is not affiliated with any commercial proxy tool and contains no code or assets from one.
 

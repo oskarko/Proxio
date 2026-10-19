@@ -119,7 +119,7 @@ final class AppModel {
 
     func start() async {
         do {
-            ca = interceptHTTPS ? try CertificateAuthority.loadOrCreate() : nil
+            ca = interceptHTTPS ? try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration) : nil
             applyRules()
             let server = try ProxyServer(store: store, port: port, ca: ca, sslProxying: policy, rules: rules)
             port = try await server.start()
@@ -183,15 +183,23 @@ final class AppModel {
         systemProxyOn = snapshots.load() != nil
     }
 
+    private func confirmKeyMigration() -> Bool {
+        confirm(
+            title: "Move the CA key into your Keychain?",
+            message: "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted.",
+            action: "Move to Keychain"
+        )
+    }
+
     func installCA() async {
         do {
-            _ = try CertificateAuthority.loadOrCreate()
+            _ = try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration)
             let trust = CATrust()
             let url = caURL
             let command = trust.installCommand(certificate: url).joined(separator: " ")
             guard confirm(
                 title: "Trust the Proxio root certificate?",
-                message: "Proxio will run:\n\n\(command)\n\nWhile it is trusted, anyone who obtains \(url.deletingLastPathComponent().path)/ca-key.pem can impersonate any website to this Mac. macOS will ask for your password.",
+                message: "Proxio will run:\n\n\(command)\n\nWhile it is trusted, anyone who can read the CA private key can impersonate any website to this Mac. macOS will ask for your password.",
                 action: "Install and Trust"
             ) else { return }
             try await Task.detached { try trust.install(certificate: url) }.value
