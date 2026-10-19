@@ -74,6 +74,7 @@ enum WebSocketBridge {
 
         clientPipeline.handler(type: ByteToMessageHandler<HTTPRequestDecoder>.self).flatMap { clientPipeline.removeHandler($0) }
             .flatMap { clientPipeline.handler(type: HTTPResponseEncoder.self) }.flatMap { clientPipeline.removeHandler($0) }
+            .flatMap { clientPipeline.handler(type: HTTPServerPipelineHandler.self) }.flatMap { clientPipeline.removeHandler($0) }
             .flatMap { clientPipeline.handler(type: ProxyFrontendHandler.self) }.flatMap { clientPipeline.removeHandler($0) }
             .flatMap { clientPipeline.addHandler(WebSocketRelayHandler(peer: upstream, direction: .sent, recorder: recorder)) }
             .flatMap { client.writeAndFlush(ByteBuffer(string: head)) }

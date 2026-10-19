@@ -47,6 +47,7 @@ public final class ProxyServer: @unchecked Sendable {
                 channel.pipeline.addHandlers([
                     ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)),
                     HTTPResponseEncoder(),
+                    HTTPServerPipelineHandler(),
                     ProxyFrontendHandler(environment: environment),
                 ])
             }

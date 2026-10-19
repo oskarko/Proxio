@@ -25,6 +25,8 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
     private var head: HTTPRequestHead?
     private var body = Data()
     private var startedAt = Date()
+    /// Whether the client allows this connection to carry another request after the response.
+    private var keepAlive = false
 
     init(environment: ProxyEnvironment, tunnel: (host: String, port: Int)? = nil) {
         self.env = environment
@@ -37,6 +39,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             head = h
             body = Data()
             startedAt = Date()
+            keepAlive = h.isKeepAlive && h.method != .CONNECT
             if h.method == .CONNECT { connect(context: context, head: h) }
         case .body(let buf):
             if head?.method != .CONNECT { body.append(contentsOf: buf.readableBytesView) }
@@ -78,6 +81,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                     let pipeline = client.pipeline
                     _ = pipeline.handler(type: ByteToMessageHandler<HTTPRequestDecoder>.self).flatMap { pipeline.removeHandler($0) }
                         .flatMap { _ in pipeline.handler(type: HTTPResponseEncoder.self) }.flatMap { pipeline.removeHandler($0) }
+                        .flatMap { _ in pipeline.handler(type: HTTPServerPipelineHandler.self) }.flatMap { pipeline.removeHandler($0) }
                         .flatMap { pipeline.removeHandler(self) }
                         .flatMap { pipeline.addHandler(RelayHandler(peer: upstream)) }
                         .flatMap { upstream.pipeline.addHandler(RelayHandler(peer: client)) }
@@ -103,6 +107,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         let pipeline = client.pipeline
         _ = pipeline.handler(type: ByteToMessageHandler<HTTPRequestDecoder>.self).flatMap { pipeline.removeHandler($0) }
             .flatMap { _ in pipeline.handler(type: HTTPResponseEncoder.self) }.flatMap { pipeline.removeHandler($0) }
+            .flatMap { _ in pipeline.handler(type: HTTPServerPipelineHandler.self) }.flatMap { pipeline.removeHandler($0) }
             .flatMap { _ -> EventLoopFuture<Void> in
                 // Same event-loop turn: the reply goes out in clear, the TLS layer is installed before any ClientHello can be read.
                 client.writeAndFlush(ByteBuffer(string: "HTTP/1.1 200 Connection Established\r\n\r\n"), promise: nil)
@@ -110,6 +115,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                     NIOSSLServerHandler(context: sslContext),
                     ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .dropBytes)),
                     HTTPResponseEncoder(),
+                    HTTPServerPipelineHandler(),
                     ProxyFrontendHandler(environment: env, tunnel: (host, port)),
                 ], position: .before(self))
             }
@@ -173,24 +179,24 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         let scripted = env.rules.applyScripts(to: local.makeResponse(), for: flow.request)
         flow.notes += scripted.notes
         let response = scripted.value
-        let client = context.channel, env = self.env
+        let client = context.channel, env = self.env, keepAlive = self.keepAlive
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .response) else {
-            return Self.finish(flow, with: response, client: client, store: env.store)
+            return Self.finish(flow, with: response, client: client, store: env.store, keepAlive: keepAlive)
         }
         Task {
             let edited = await handler.resume(response: response, for: flow.request)
-            client.eventLoop.execute { Self.finish(flow, with: edited, client: client, store: env.store) }
+            client.eventLoop.execute { Self.finish(flow, with: edited, client: client, store: env.store, keepAlive: keepAlive) }
         }
     }
 
     /// Records the exchange and writes `response` (nil = cancelled at a breakpoint).
-    static func finish(_ flow: Flow, with response: HTTPResponseRecord?, client: Channel, store: FlowStore) {
+    static func finish(_ flow: Flow, with response: HTTPResponseRecord?, client: Channel, store: FlowStore, keepAlive: Bool) {
         var flow = flow
         flow.response = response ?? HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio")
         flow.duration = Date().timeIntervalSince(flow.startedAt)
         let done = flow
         Task { await store.add(done) }
-        ResponseWriter.write(response, to: client)
+        ResponseWriter.write(response, to: client, keepAlive: keepAlive)
     }
 
     /// Answers 499 for a request the user cancelled at a breakpoint.
@@ -239,6 +245,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         let bodyData = request.body
         let client = context.channel
         let env = self.env
+        let keepAlive = self.keepAlive
 
         ClientBootstrap(group: context.eventLoop)
             .channelInitializer { ch in
@@ -252,7 +259,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                     }
                     handlers.append(HTTPRequestEncoder())
                     handlers.append(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)))
-                    handlers.append(UpstreamResponseHandler(client: client, flow: flow, environment: env))
+                    handlers.append(UpstreamResponseHandler(client: client, flow: flow, environment: env, keepAlive: keepAlive))
                     try ch.pipeline.syncOperations.addHandlers(handlers)
                     return ch.eventLoop.makeSucceededVoidFuture()
                 } catch {
@@ -333,8 +340,11 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     private var response: HTTPResponseRecord?
     private var body = Data()
     private var upgrading = false
+    /// The client wants to reuse its connection; downgraded to false when the response has no length framing.
+    private var keepAlive: Bool
 
-    init(client: Channel, flow: Flow, environment: ProxyEnvironment) {
+    init(client: Channel, flow: Flow, environment: ProxyEnvironment, keepAlive: Bool) {
+        self.keepAlive = keepAlive
         self.client = client
         self.flow = flow
         self.store = environment.store
@@ -357,7 +367,9 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
             }
             guard !holds else { return }
             var headers = h.headers
-            headers.replaceOrAdd(name: "Connection", value: "close")
+            headers.remove(name: "Connection")
+            keepAlive = keepAlive && Self.isFramed(h, method: flow.request.method)
+            headers.add(name: "Connection", value: keepAlive ? "keep-alive" : "close")
             client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: h.status, headers: headers)), promise: nil)
         case .body(let buf):
             if upgrading { return }
@@ -386,7 +398,8 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
                 }
             } else {
                 record(response)
-                client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
+                let reuse = keepAlive
+                client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in if !reuse { client.close(promise: nil) } }
             }
             context.close(promise: nil)
         }
@@ -395,7 +408,14 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     /// Writes a held (possibly edited) response; nil means the user cancelled it.
     private func deliver(_ edited: HTTPResponseRecord?) {
         record(edited ?? HTTPResponseRecord(status: 499, reason: "Cancelled by Proxio"))
-        ResponseWriter.write(edited, to: client)
+        ResponseWriter.write(edited, to: client, keepAlive: keepAlive)
+    }
+
+    /// Whether the client can tell where the body ends without the connection closing.
+    private static func isFramed(_ head: HTTPResponseHead, method: String) -> Bool {
+        if method.uppercased() == "HEAD" || head.status.code < 200 || head.status.code == 204 || head.status.code == 304 { return true }
+        if head.headers.contains(name: "Content-Length") { return true }
+        return head.headers[canonicalForm: "Transfer-Encoding"].contains { $0.lowercased() == "chunked" }
     }
 
     private func record(_ response: HTTPResponseRecord?) {
@@ -411,9 +431,9 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     }
 }
 
-/// Writes a complete, already-buffered response and closes the connection.
+/// Writes a complete, already-buffered response, then closes the connection unless it is kept alive.
 enum ResponseWriter {
-    static func write(_ response: HTTPResponseRecord?, to client: Channel) {
+    static func write(_ response: HTTPResponseRecord?, to client: Channel, keepAlive: Bool) {
         guard let response else {
             let headers = HTTPHeaders([("Content-Length", "0"), ("Connection", "close")])
             client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: .custom(code: 499, reasonPhrase: "Cancelled by Proxio"), headers: headers)), promise: nil)
@@ -424,10 +444,10 @@ enum ResponseWriter {
         for h in response.headers { headers.add(name: h.name, value: h.value) }
         for name in ["Transfer-Encoding", "Content-Length", "Connection"] { headers.remove(name: name) }
         headers.add(name: "Content-Length", value: String(response.body.count))
-        headers.add(name: "Connection", value: "close")
+        headers.add(name: "Connection", value: keepAlive ? "keep-alive" : "close")
         let status = HTTPResponseStatus(statusCode: response.status, reasonPhrase: response.reason)
         client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: status, headers: headers)), promise: nil)
         if !response.body.isEmpty { client.write(HTTPServerResponsePart.body(.byteBuffer(ByteBuffer(bytes: response.body))), promise: nil) }
-        client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in client.close(promise: nil) }
+        client.writeAndFlush(HTTPServerResponsePart.end(nil)).whenComplete { [client] _ in if !keepAlive { client.close(promise: nil) } }
     }
 }
