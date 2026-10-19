@@ -257,3 +257,30 @@ private func nioCert(_ pem: String) throws -> NIOSSLCertificate {
     try await proxy.stop()
     try await group.shutdownGracefully()
 }
+
+@Test func excludedHostIsTunnelledOpaquelyEvenWithCA() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startUpstream(group)   // plain HTTP: would break if the proxy tried TLS
+    let upstreamPort = upstream.localAddress!.port!
+
+    let policy = SSLProxyingPolicy(SSLProxyingRules(exclude: [HostPattern("127.0.0.1")!], interceptByDefault: true))
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, ca: try CertificateAuthority(), sslProxying: policy)
+    let proxyPort = try await proxy.start()
+
+    let done = group.next().makePromise(of: String.self)
+    let client = try await ClientBootstrap(group: group)
+        .channelInitializer { $0.pipeline.addHandler(Collector(done)) }
+        .connect(host: "127.0.0.1", port: proxyPort).get()
+    try await client.writeAndFlush(ByteBuffer(string: "CONNECT 127.0.0.1:\(upstreamPort) HTTP/1.1\r\n\r\n")).get()
+    try await Task.sleep(nanoseconds: 300_000_000)
+    try await client.writeAndFlush(ByteBuffer(string: "GET /raw HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")).get()
+
+    let received = try await done.futureResult.get()
+    #expect(received.contains("X-Path: /raw"))
+    #expect(await store.all().map(\.request.method) == ["CONNECT"])
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}

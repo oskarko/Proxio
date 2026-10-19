@@ -8,6 +8,7 @@ import ProxioCore
 struct ProxyEnvironment {
     let store: FlowStore
     let ca: CertificateAuthority?
+    let sslProxying: SSLProxyingPolicy
     let upstreamSSLContext: NIOSSLContext
 }
 
@@ -49,7 +50,8 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         guard let (host, port) = Self.hostPort(from: head.uri, defaultPort: 443) else {
             return fail(context: context, status: .badRequest)
         }
-        if let ca = env.ca, let sslContext = try? ca.serverContext(for: host) {
+        if let ca = env.ca, env.sslProxying.rules.shouldIntercept(host: host, port: port),
+           let sslContext = try? ca.serverContext(for: host) {
             return intercept(context: context, host: host, port: port, sslContext: sslContext)
         }
         let client = context.channel
