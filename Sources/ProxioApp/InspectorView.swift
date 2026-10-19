@@ -184,7 +184,7 @@ private struct BodyView: View {
 
     private var rendered: String {
         switch mode {
-        case .pretty: BodyFormatter.prettyJSON(data) ?? String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
+        case .pretty: BodyFormatter.prettyJSON(data) ?? BodyFormatter.prettyProtobuf(data, contentType: mime) ?? String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .raw: String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .hex: BodyFormatter.hexDump(data)
         }
