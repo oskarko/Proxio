@@ -11,6 +11,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.70.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
+        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.5.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
     ],
     targets: [
         .target(name: "ProxioCore"),
@@ -21,6 +24,9 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
+                .product(name: "X509", package: "swift-certificates"),
+                .product(name: "Crypto", package: "swift-crypto"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
@@ -38,6 +44,9 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
+                .product(name: "X509", package: "swift-certificates"),
+                .product(name: "Crypto", package: "swift-crypto"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

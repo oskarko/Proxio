@@ -3,9 +3,11 @@ import ProxioCore
 import ProxioProxy
 
 setlinebuf(stdout)
-let port = CommandLine.arguments.dropFirst().first.flatMap { Int($0) } ?? 9090
+let port = CommandLine.arguments.dropFirst().compactMap { Int($0) }.first ?? 9090
 let store = FlowStore()
-let server = ProxyServer(store: store, port: port)
+let useMITM = CommandLine.arguments.contains("--mitm")
+let ca = useMITM ? try CertificateAuthority.loadOrCreate() : nil
+let server = try ProxyServer(store: store, port: port, ca: ca)
 let bound = try await server.start()
 print("Proxio listening on 127.0.0.1:\(bound)")
 

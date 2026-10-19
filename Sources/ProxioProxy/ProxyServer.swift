@@ -2,19 +2,31 @@ import Foundation
 import NIOCore
 import NIOPosix
 import NIOHTTP1
+import NIOSSL
 import ProxioCore
 
 /// Local HTTP proxy. Plain HTTP requests are forwarded and recorded; CONNECT
 /// requests are tunnelled as opaque bytes (TLS interception comes later).
 public final class ProxyServer: @unchecked Sendable {
-    private let store: FlowStore
+    private let environment: ProxyEnvironment
     private let host: String
     private let requestedPort: Int
     private let group: MultiThreadedEventLoopGroup
     private var channel: Channel?
 
-    public init(store: FlowStore, host: String = "127.0.0.1", port: Int = 9090) {
-        self.store = store
+    /// - Parameters:
+    ///   - ca: when set, CONNECT tunnels are intercepted (TLS terminated and re-originated); otherwise they are relayed opaquely.
+    ///   - upstreamTLS: client TLS settings used to reach origin servers when intercepting.
+    public init(
+        store: FlowStore,
+        host: String = "127.0.0.1",
+        port: Int = 9090,
+        ca: CertificateAuthority? = nil,
+        upstreamTLS: TLSConfiguration? = nil
+    ) throws {
+        var tls = upstreamTLS ?? TLSConfiguration.makeClientConfiguration()
+        tls.applicationProtocols = ["http/1.1"]
+        self.environment = ProxyEnvironment(store: store, ca: ca, upstreamSSLContext: try NIOSSLContext(configuration: tls))
         self.host = host
         self.requestedPort = port
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
@@ -23,7 +35,7 @@ public final class ProxyServer: @unchecked Sendable {
     /// Starts listening and returns the bound port (useful with port 0).
     @discardableResult
     public func start() async throws -> Int {
-        let store = self.store
+        let environment = self.environment
         let bootstrap = ServerBootstrap(group: group)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
@@ -31,7 +43,7 @@ public final class ProxyServer: @unchecked Sendable {
                 channel.pipeline.addHandlers([
                     ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)),
                     HTTPResponseEncoder(),
-                    ProxyFrontendHandler(store: store),
+                    ProxyFrontendHandler(environment: environment),
                 ])
             }
             .childChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
