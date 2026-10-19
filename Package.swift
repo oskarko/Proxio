@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Wireway",
+    name: "Proxio",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "WirewayCore", targets: ["WirewayCore"]),
+        .library(name: "ProxioCore", targets: ["ProxioCore"]),
     ],
     targets: [
-        .target(name: "WirewayCore"),
-        .testTarget(name: "WirewayCoreTests", dependencies: ["WirewayCore"]),
+        .target(name: "ProxioCore"),
+        .testTarget(name: "ProxioCoreTests", dependencies: ["ProxioCore"]),
     ]
 )

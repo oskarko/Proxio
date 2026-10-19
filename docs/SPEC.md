@@ -1,4 +1,4 @@
-# Wireway spec (clean-room)
+# Proxio spec (clean-room)
 
 Written from observable behaviour and the public list of open-source building blocks a comparable app ships with. No decompiled code, assets, icons or strings are reused.
 
@@ -6,10 +6,10 @@ Written from observable behaviour and the public list of open-source building bl
 
 | Layer | Responsibility | Building block |
 | --- | --- | --- |
-| WirewayCore | Flow model, store, filters, HAR import/export | pure Swift |
-| WirewayProxy | Listener, HTTP/1.1 + CONNECT, TLS MITM, per-host leaf certs | swift-nio, swift-nio-ssl, swift-certificates |
-| WirewayHelper | Privileged helper that sets the system proxy (SMAppService / XPC) | ServiceManagement |
-| WirewayApp | AppKit/SwiftUI UI | HexFiend (hex view), Sparkle (updates), Monaco/CodeMirror in WKWebView (body editor) |
+| ProxioCore | Flow model, store, filters, HAR import/export | pure Swift |
+| ProxioProxy | Listener, HTTP/1.1 + CONNECT, TLS MITM, per-host leaf certs | swift-nio, swift-nio-ssl, swift-certificates |
+| ProxioHelper | Privileged helper that sets the system proxy (SMAppService / XPC) | ServiceManagement |
+| ProxioApp | AppKit/SwiftUI UI | HexFiend (hex view), Sparkle (updates), Monaco/CodeMirror in WKWebView (body editor) |
 
 ## MVP (milestone 1)
 

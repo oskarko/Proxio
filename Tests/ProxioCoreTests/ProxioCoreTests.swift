@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import WirewayCore
+@testable import ProxioCore
 
 private func sample(_ path: String, status: Int = 200, mime: String = "application/json") -> Flow {
     Flow(
