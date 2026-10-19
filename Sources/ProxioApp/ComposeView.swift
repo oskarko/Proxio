@@ -52,7 +52,7 @@ struct ComposeView: View {
             }
             Text("Headers (Name: value, one per line)").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $headers).font(.body.monospaced()).frame(height: 120).border(.separator)
-            Text(bodyIsBinary ? "Body is binary (\(BodyFormatter.byteCount(original.count))) and is sent unchanged" : "Body")
+            Text(bodyIsBinary ? String(localized: "Body is binary (\(BodyFormatter.byteCount(original.count))) and is sent unchanged") : String(localized: "Body"))
                 .font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $bodyText).font(.body.monospaced()).frame(minHeight: 120).border(.separator).disabled(bodyIsBinary)
             if let error { Text(error).foregroundStyle(.red).font(.caption) }
@@ -81,7 +81,7 @@ struct ComposeView: View {
     private func send() {
         guard let u = URL(string: url.trimmingCharacters(in: .whitespaces)), let scheme = u.scheme?.lowercased(),
               scheme == "http" || scheme == "https", u.host != nil else {
-            error = "Enter a full http:// or https:// URL"; return
+            error = String(localized: "Enter a full http:// or https:// URL"); return
         }
         let request = HTTPRequestRecord(
             method: method, url: u, headers: HeaderText.parse(headers),

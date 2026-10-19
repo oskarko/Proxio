@@ -36,6 +36,7 @@ let package = Package(
         .executableTarget(
             name: "ProxioApp",
             dependencies: ["ProxioCore", "ProxioProxy", "ProxioSystem"],
+            exclude: ["Localization"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(

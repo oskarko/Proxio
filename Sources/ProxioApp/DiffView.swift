@@ -28,12 +28,12 @@ struct DiffView: View {
             .frame(maxWidth: .infinity, alignment: .leading).padding(12)
             HStack {
                 Picker("", selection: $side) {
-                    ForEach(Side.allCases, id: \.self) { Text($0.rawValue) }
+                    ForEach(Side.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)) }
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 220)
                 Toggle("Only changes", isOn: $onlyChanges).toggleStyle(.checkbox)
                 Spacer()
-                if let message { Text(message.isIdentical ? "Identical" : "Different").foregroundStyle(message.isIdentical ? .green : .orange) }
+                if let message { Text(LocalizedStringKey(message.isIdentical ? "Identical" : "Different")).foregroundStyle(message.isIdentical ? .green : .orange) }
             }
             .padding(.horizontal, 12).padding(.bottom, 8)
             Divider()
@@ -64,7 +64,7 @@ struct DiffView: View {
     }
 
     @ViewBuilder
-    private func section(_ title: String, _ lines: [DiffLine]) -> some View {
+    private func section(_ title: LocalizedStringKey, _ lines: [DiffLine]) -> some View {
         Text(title).font(.caption.bold()).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 4)
         let rows = DiffRow.rows(lines, onlyChanges: onlyChanges)
         if lines.isEmpty {
@@ -84,7 +84,7 @@ struct DiffView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(color(line.kind).opacity(line.kind == .same ? 0 : 0.14))
             case .gap(let count):
-                Text("⋯ \(count) unchanged line\(count == 1 ? "" : "s")").font(.caption).foregroundStyle(.tertiary).padding(.horizontal, 12).padding(.vertical, 2)
+                Text(count == 1 ? String(localized: "⋯ 1 unchanged line") : String(localized: "⋯ \(count) unchanged lines")).font(.caption).foregroundStyle(.tertiary).padding(.horizontal, 12).padding(.vertical, 2)
             }
         }
     }

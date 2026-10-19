@@ -129,7 +129,7 @@ struct PausedEditor: View {
             }
             Text("Headers (Name: value, one per line)").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $headers).font(.body.monospaced()).frame(height: 130).border(.separator)
-            Text(bodyIsBinary ? "Body is binary (\(BodyFormatter.byteCount(original.count))) and is kept unchanged" : "Body")
+            Text(bodyIsBinary ? String(localized: "Body is binary (\(BodyFormatter.byteCount(original.count))) and is kept unchanged") : String(localized: "Body"))
                 .font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $bodyText).font(.body.monospaced()).frame(minHeight: 130).border(.separator).disabled(bodyIsBinary)
             if let error { Text(error).foregroundStyle(.red).font(.caption) }
@@ -169,13 +169,13 @@ struct PausedEditor: View {
         switch message.content {
         case .request(var r):
             guard let u = URL(string: url.trimmingCharacters(in: .whitespaces)), u.host != nil else {
-                error = "The URL is not valid"; return
+                error = String(localized: "The URL is not valid"); return
             }
             r.method = method.trimmingCharacters(in: .whitespaces).uppercased()
             r.url = u; r.headers = HeaderText.parse(headers); r.body = body
             model.release(message, with: .request(r))
         case .response(var r, _):
-            guard (100...599).contains(status) else { error = "Status must be between 100 and 599"; return }
+            guard (100...599).contains(status) else { error = String(localized: "Status must be between 100 and 599"); return }
             r.status = status; r.reason = reason; r.headers = HeaderText.parse(headers); r.body = body
             model.release(message, with: .response(r))
         }

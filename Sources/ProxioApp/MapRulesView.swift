@@ -39,8 +39,8 @@ struct MapRulesView: View {
             }
             .pickerStyle(.segmented).labelsHidden().padding(12)
             Text(tab == 0
-                 ? "Answer matching requests with a file or text, without contacting the server."
-                 : "Send matching requests to a different scheme, host, port or path. Empty fields keep the original.")
+                 ? String(localized: "Answer matching requests with a file or text, without contacting the server.")
+                 : String(localized: "Send matching requests to a different scheme, host, port or path. Empty fields keep the original."))
                 .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 8)
             Divider()
             if tab == 0 { local } else { remote }
@@ -69,8 +69,8 @@ struct MapRulesView: View {
                     HStack {
                         Toggle("", isOn: $rule.isEnabled).labelsHidden()
                         VStack(alignment: .leading) {
-                            Text(rule.matcher.urlPattern.isEmpty ? "(any)" : rule.matcher.urlPattern).lineLimit(1)
-                            Text("\(rule.status) · \(rule.filePath.map { ($0 as NSString).lastPathComponent } ?? "inline")")
+                            Text(rule.matcher.urlPattern.isEmpty ? String(localized: "(any)") : rule.matcher.urlPattern).lineLimit(1)
+                            Text("\(rule.status) · \(rule.filePath.map { ($0 as NSString).lastPathComponent } ?? String(localized: "inline"))")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }.tag(rule.id)

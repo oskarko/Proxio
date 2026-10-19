@@ -31,4 +31,12 @@ Proxio is an independent clean-room project. It is not affiliated with any comme
 
 - **Diff**: select two requests (⌘-click) and press Compare. Start line, headers (order and case ignored) and body (JSON compared pretty-printed with sorted keys, so formatting is not a difference) are shown line by line, for the request and the response, with an "only changes" view.
 
+### WebSocket
+
+A `101 Switching Protocols` upgrade is relayed byte for byte while a passive parser records every text, binary, close, ping and pong frame (per direction, 1 MB stored per message). `permessage-deflate` is not negotiated so frames stay readable. Messages show in the inspector and in HAR exports.
+
+### Look and languages
+
+The UI follows the familiar three-panel layout (quick filters, flow table, request/response inspector, Tools menu) with a teal accent and an anchor icon (`scripts/make-icon.sh` regenerates it). It is available in English, Spanish, Russian and French, following the system language. English strings are the keys; translations live in `scripts/l10n-catalog.py`, which writes `Sources/ProxioApp/Localization/*.lproj` and fails if a string in the UI has no translation (`python3 scripts/l10n-catalog.py --check`).
+
 URL patterns are `host[:port]/path?query` globs with `*` (`api.example.com/v1/*`); a bare host matches every path. Rules are saved to `~/Library/Application Support/Proxio/rules.json` and reloaded on launch (an unreadable file is moved to `rules.json.bak`, never overwritten). Bodies sent with `Content-Encoding` gzip, deflate or brotli are shown and exported to HAR decoded; the capture itself keeps the original bytes. HTTPS rules need interception enabled and the host not excluded.
