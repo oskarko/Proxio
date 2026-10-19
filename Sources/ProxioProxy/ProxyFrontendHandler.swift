@@ -3,6 +3,8 @@ import NIOCore
 import NIOPosix
 import NIOHTTP1
 import NIOSSL
+import NIOTLS
+import NIOHTTP2
 import ProxioCore
 
 struct ProxyEnvironment {
@@ -10,7 +12,25 @@ struct ProxyEnvironment {
     let ca: CertificateAuthority?
     let sslProxying: SSLProxyingPolicy
     let upstreamSSLContext: NIOSSLContext
+    /// Same trust settings as `upstreamSSLContext`, but also offers `h2` through ALPN.
+    let upstreamH2SSLContext: NIOSSLContext
     let rules: TrafficRules
+
+    /// Starts a flow for `request` and applies Map Local / Map Remote and scripts.
+    func prepare(_ request: HTTPRequestRecord, startedAt: Date) -> (flow: Flow, local: MapLocalRule?) {
+        var flow = Flow(startedAt: startedAt, request: request)
+        let local = rules.mapLocal(for: request)
+        if local != nil {
+            flow.notes.append("Map Local")
+        } else if let (rule, rewritten) = rules.mapRemote(for: request) {
+            flow.request.url = rewritten
+            flow.notes.append(rule.summary)
+        }
+        let scripted = rules.applyScripts(to: flow.request)
+        flow.request = scripted.value
+        flow.notes += scripted.notes
+        return (flow, local)
+    }
 }
 
 /// Handles one client connection: reads a request, then either forwards it
@@ -111,13 +131,21 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             .flatMap { _ -> EventLoopFuture<Void> in
                 // Same event-loop turn: the reply goes out in clear, the TLS layer is installed before any ClientHello can be read.
                 client.writeAndFlush(ByteBuffer(string: "HTTP/1.1 200 Connection Established\r\n\r\n"), promise: nil)
-                return pipeline.addHandlers([
-                    NIOSSLServerHandler(context: sslContext),
-                    ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .dropBytes)),
-                    HTTPResponseEncoder(),
-                    HTTPServerPipelineHandler(),
-                    ProxyFrontendHandler(environment: env, tunnel: (host, port)),
-                ], position: .before(self))
+                // The forged certificate offers h2 and http/1.1; whichever the client picks decides the codec.
+                let alpn = ApplicationProtocolNegotiationHandler { result, channel in
+                    if case .negotiated(let name) = result, name == "h2" {
+                        return channel.configureHTTP2Pipeline(mode: .server) { stream in
+                            stream.pipeline.addHandler(HTTP2StreamHandler(environment: env, tunnel: (host, port)))
+                        }.map { _ in }
+                    }
+                    return channel.pipeline.addHandlers([
+                        ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .dropBytes)),
+                        HTTPResponseEncoder(),
+                        HTTPServerPipelineHandler(),
+                        ProxyFrontendHandler(environment: env, tunnel: (host, port)),
+                    ])
+                }
+                return pipeline.addHandlers([NIOSSLServerHandler(context: sslContext), alpn], position: .before(self))
             }
             .flatMap { pipeline.removeHandler(self) }
             .whenFailure { _ in client.close(promise: nil) }
@@ -145,17 +173,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             headers: head.headers.map { HTTPHeader(name: $0.name, value: $0.value) },
             body: body
         )
-        var flow = Flow(startedAt: startedAt, request: request)
-        let local = env.rules.mapLocal(for: request)
-        if local != nil {
-            flow.notes.append("Map Local")
-        } else if let (rule, rewritten) = env.rules.mapRemote(for: request) {
-            flow.request.url = rewritten
-            flow.notes.append(rule.summary)
-        }
-        let scripted = env.rules.applyScripts(to: flow.request)
-        flow.request = scripted.value
-        flow.notes += scripted.notes
+        let (flow, local) = env.prepare(request, startedAt: startedAt)
 
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .request) else {
             return proceed(context: context, flow: flow, original: request, local: local)

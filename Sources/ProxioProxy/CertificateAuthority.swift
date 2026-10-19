@@ -107,11 +107,12 @@ public final class CertificateAuthority: @unchecked Sendable {
         get throws { try certificate.serializeAsPEM().pemString }
     }
 
-    /// TLS server context presenting a leaf certificate for `host`, cached per host.
-    public func serverContext(for host: String) throws -> NIOSSLContext {
+    /// TLS server context presenting a leaf certificate for `host`, cached per host and ALPN list.
+    public func serverContext(for host: String, applicationProtocols: [String] = ["h2", "http/1.1"]) throws -> NIOSSLContext {
         lock.lock()
         defer { lock.unlock() }
-        if let cached = contexts[host] { return cached }
+        let cacheKey = "\(host)|\(applicationProtocols.joined(separator: ","))"
+        if let cached = contexts[cacheKey] { return cached }
 
         let leafKey = P256.Signing.PrivateKey()
         let now = Date()
@@ -141,9 +142,9 @@ public final class CertificateAuthority: @unchecked Sendable {
             certificateChain: [.certificate(nioCert)],
             privateKey: .privateKey(nioKey)
         )
-        config.applicationProtocols = ["http/1.1"]
+        config.applicationProtocols = applicationProtocols
         let context = try NIOSSLContext(configuration: config)
-        contexts[host] = context
+        contexts[cacheKey] = context
         return context
     }
 

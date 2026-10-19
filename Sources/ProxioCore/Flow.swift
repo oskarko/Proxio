@@ -31,13 +31,26 @@ public struct HTTPResponseRecord: Sendable, Equatable, Codable {
     public var httpVersion: String
     public var headers: [HTTPHeader]
     public var body: Data
+    /// Headers sent after the body (HTTP/2 trailers, e.g. gRPC's `grpc-status`).
+    public var trailers: [HTTPHeader]
 
-    public init(status: Int, reason: String = "", httpVersion: String = "HTTP/1.1", headers: [HTTPHeader] = [], body: Data = Data()) {
+    public init(status: Int, reason: String = "", httpVersion: String = "HTTP/1.1", headers: [HTTPHeader] = [], body: Data = Data(), trailers: [HTTPHeader] = []) {
         self.status = status
         self.reason = reason
         self.httpVersion = httpVersion
         self.headers = headers
         self.body = body
+        self.trailers = trailers
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decode(Int.self, forKey: .status)
+        reason = try c.decode(String.self, forKey: .reason)
+        httpVersion = try c.decode(String.self, forKey: .httpVersion)
+        headers = try c.decode([HTTPHeader].self, forKey: .headers)
+        body = try c.decode(Data.self, forKey: .body)
+        trailers = try c.decodeIfPresent([HTTPHeader].self, forKey: .trailers) ?? []
     }
 
     public var mimeType: String {

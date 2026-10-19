@@ -209,7 +209,7 @@ private func nioCert(_ pem: String) throws -> NIOSSLCertificate {
 
     // Origin server with its own CA, which only the proxy trusts.
     let originCA = try CertificateAuthority(commonName: "Origin Test CA")
-    let originContext = try originCA.serverContext(for: "localhost")
+    let originContext = try originCA.serverContext(for: "localhost", applicationProtocols: ["http/1.1"])
     let origin = try await ServerBootstrap(group: group)
         .childChannelInitializer { ch in
             ch.pipeline.addHandler(NIOSSLServerHandler(context: originContext))

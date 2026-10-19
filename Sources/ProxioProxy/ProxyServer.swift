@@ -30,7 +30,9 @@ public final class ProxyServer: @unchecked Sendable {
     ) throws {
         var tls = upstreamTLS ?? TLSConfiguration.makeClientConfiguration()
         tls.applicationProtocols = ["http/1.1"]
-        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: try NIOSSLContext(configuration: tls), rules: rules)
+        let http1 = try NIOSSLContext(configuration: tls)
+        tls.applicationProtocols = ["h2", "http/1.1"]
+        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: http1, upstreamH2SSLContext: try NIOSSLContext(configuration: tls), rules: rules)
         self.host = host
         self.requestedPort = port
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)

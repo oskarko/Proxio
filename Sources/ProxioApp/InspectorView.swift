@@ -23,8 +23,8 @@ struct InspectorView: View {
                 pane("Response") {
                     if let r = flow.response {
                         MessageView(
-                            headers: r.headers, payload: r.decodedBody, mime: r.mimeType, query: [],
-                            raw: rawText(start: "\(r.httpVersion) \(r.status) \(r.reason)", headers: r.headers, body: r.decodedBody),
+                            headers: r.headers + r.trailers, payload: r.decodedBody, mime: r.mimeType, query: [],
+                            raw: rawText(start: "\(r.httpVersion) \(r.status) \(r.reason)", headers: r.headers, body: r.decodedBody, trailers: r.trailers),
                             messages: flow.messages
                         )
                     } else {
@@ -73,9 +73,10 @@ struct InspectorView: View {
         return (c.percentEncodedPath.isEmpty ? "/" : c.percentEncodedPath) + (c.percentEncodedQuery.map { "?" + $0 } ?? "")
     }
 
-    private func rawText(start: String, headers: [HTTPHeader], body: Data) -> String {
+    private func rawText(start: String, headers: [HTTPHeader], body: Data, trailers: [HTTPHeader] = []) -> String {
         let head = ([start] + headers.map { "\($0.name): \($0.value)" }).joined(separator: "\n")
-        return head + "\n\n" + (String(data: body, encoding: .utf8) ?? BodyFormatter.hexDump(body))
+        let tail = trailers.isEmpty ? "" : "\n\n" + trailers.map { "\($0.name): \($0.value)" }.joined(separator: "\n")
+        return head + "\n\n" + (String(data: body, encoding: .utf8) ?? BodyFormatter.hexDump(body)) + tail
     }
 
     private var queryItems: [HTTPHeader] {

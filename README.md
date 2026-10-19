@@ -41,7 +41,13 @@ Tools → Scripting… (⇧⌘J) holds JavaScript scripts (run with the system J
 
 ### gRPC and Protobuf
 
-Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split into length-prefixed messages and shown in the inspector as raw protobuf (`protoc --decode_raw` style: nested messages, strings, varints, fixed-width values; gzip-compressed messages are inflated), with trailers frames listed. `application/x-protobuf` bodies are decoded the same way. Field names need a `.proto`, which is not supported yet. Native gRPC runs over HTTP/2, which the proxy does not speak yet (see roadmap), so today this works for gRPC-Web and any protobuf over HTTP/1.1.
+Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split into length-prefixed messages and shown in the inspector as raw protobuf (`protoc --decode_raw` style: nested messages, strings, varints, fixed-width values; gzip-compressed messages are inflated), with trailers frames listed. `application/x-protobuf` bodies are decoded the same way. Field names need a `.proto`, which is not supported yet. Native gRPC is captured too, since intercepted tunnels speak HTTP/2 (see below); trailers such as `grpc-status` are kept and shown.
+
+### HTTP/2 and keep-alive
+
+Client connections to the proxy are kept alive across requests (HTTP/1.1, including inside decrypted tunnels); pipelined requests are answered in order. Inside intercepted CONNECT tunnels the proxy negotiates ALPN (`h2`, `http/1.1`) with the client and with the origin, so HTTP/2 clients are captured, rewritten (breakpoints, Map Local/Remote, scripts) and forwarded, with trailers preserved. An HTTP/2 client can talk to an HTTP/1.1 origin and vice versa.
+
+Limitations: flows held by a breakpoint or script are buffered whole; upstream connections are not pooled or multiplexed (one per request); no flow-control tuning; streaming gRPC is passed through but only decoded per message once complete; opaque (non-intercepted) tunnels are untouched; WebSocket stays HTTP/1.1; there is no h2c on the proxy port.
 
 ### Privileged helper (optional)
 
