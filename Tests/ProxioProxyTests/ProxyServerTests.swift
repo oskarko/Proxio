@@ -284,3 +284,143 @@ private func nioCert(_ pem: String) throws -> NIOSSLCertificate {
     try await upstream.close().get()
     try await group.shutdownGracefully()
 }
+
+// MARK: - Breakpoints
+
+/// Echoes the received method, body and a custom header back, so edits made at a breakpoint are observable.
+private final class EchoHandler: ChannelInboundHandler {
+    typealias InboundIn = HTTPServerRequestPart
+    typealias OutboundOut = HTTPServerResponsePart
+    private var head: HTTPRequestHead?
+    private var body = ""
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        switch unwrapInboundIn(data) {
+        case .head(let h): head = h
+        case .body(let b): body += String(buffer: b)
+        case .end:
+            let text = "\(head?.method.rawValue ?? "") \(head?.uri ?? "") x-edit=\(head?.headers["X-Edit"].first ?? "-") host=\(head?.headers["Host"].first ?? "-") body=\(body)"
+            var headers = HTTPHeaders()
+            headers.add(name: "Content-Type", value: "text/plain")
+            headers.add(name: "Content-Length", value: String(text.utf8.count))
+            context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: .ok, headers: headers))), promise: nil)
+            context.write(wrapOutboundOut(.body(.byteBuffer(ByteBuffer(string: text)))), promise: nil)
+            context.writeAndFlush(wrapOutboundOut(.end(nil))).whenComplete { _ in context.close(promise: nil) }
+        }
+    }
+}
+
+private func startEchoUpstream(_ group: EventLoopGroup) async throws -> Channel {
+    try await ServerBootstrap(group: group)
+        .childChannelInitializer { ch in ch.pipeline.configureHTTPServerPipeline().flatMap { ch.pipeline.addHandler(EchoHandler()) } }
+        .bind(host: "127.0.0.1", port: 0).get()
+}
+
+private struct ScriptedBreakpoints: BreakpointHandler {
+    var editRequest: (@Sendable (HTTPRequestRecord) -> HTTPRequestRecord?)?
+    var editResponse: (@Sendable (HTTPResponseRecord) -> HTTPResponseRecord?)?
+    func resume(request: HTTPRequestRecord) async -> HTTPRequestRecord? {
+        try? await Task.sleep(nanoseconds: 50_000_000)   // simulates a person looking at it
+        return editRequest.map { $0(request) } ?? request
+    }
+    func resume(response: HTTPResponseRecord, for request: HTTPRequestRecord) async -> HTTPResponseRecord? {
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return editResponse.map { $0(response) } ?? response
+    }
+}
+
+private func proxiedSession(port: Int) -> URLSession {
+    let config = URLSessionConfiguration.ephemeral
+    config.connectionProxyDictionary = ["HTTPEnable": 1, "HTTPProxy": "127.0.0.1", "HTTPPort": port]
+    return URLSession(configuration: config)
+}
+
+@Test func requestBreakpointEditsWhatReachesTheServer() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startEchoUpstream(group)
+    let upstreamPort = upstream.localAddress!.port!
+
+    let rules = TrafficRules()
+    rules.breakpoints = [Breakpoint(matcher: RequestMatcher(urlPattern: "127.0.0.1:\(upstreamPort)"), onRequest: true, onResponse: false)]
+    rules.breakpointHandler = ScriptedBreakpoints(editRequest: { r in
+        var r = r
+        r.method = "PUT"
+        r.url = URL(string: "http://127.0.0.1:\(upstreamPort)/edited?a=1")!
+        r.headers.append(HTTPHeader(name: "X-Edit", value: "yes"))
+        r.body = Data("changed".utf8)
+        return r
+    })
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(upstreamPort)/original")!)
+    request.httpMethod = "POST"
+    request.httpBody = Data("original body".utf8)
+    let (data, _) = try await proxiedSession(port: proxyPort).data(for: request)
+    #expect(String(data: data, encoding: .utf8) == "PUT /edited?a=1 x-edit=yes host=127.0.0.1:\(upstreamPort) body=changed")
+
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let flow = await store.all().first
+    #expect(flow?.request.method == "PUT")
+    #expect(flow?.request.url.path == "/edited")
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}
+
+@Test func responseBreakpointEditsWhatTheClientReceives() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startUpstream(group)
+    let upstreamPort = upstream.localAddress!.port!
+
+    let rules = TrafficRules()
+    rules.breakpoints = [Breakpoint(matcher: RequestMatcher(urlPattern: "*"), onRequest: false, onResponse: true)]
+    rules.breakpointHandler = ScriptedBreakpoints(editResponse: { r in
+        var r = r
+        r.status = 201
+        r.reason = "Created"
+        r.headers.append(HTTPHeader(name: "X-Edited", value: "1"))
+        r.body = Data("edited response, longer than before".utf8)
+        return r
+    })
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (data, response) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://127.0.0.1:\(upstreamPort)/ping")!)
+    let http = response as? HTTPURLResponse
+    #expect(http?.statusCode == 201)
+    #expect(http?.value(forHTTPHeaderField: "X-Edited") == "1")
+    #expect(String(data: data, encoding: .utf8) == "edited response, longer than before")
+
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let flow = await store.all().first
+    #expect(flow?.response?.status == 201)
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}
+
+@Test func cancellingAtABreakpointAnswers499() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startUpstream(group)
+    let upstreamPort = upstream.localAddress!.port!
+
+    let rules = TrafficRules()
+    rules.breakpoints = [Breakpoint(matcher: RequestMatcher(urlPattern: "*"))]
+    rules.breakpointHandler = ScriptedBreakpoints(editRequest: { _ in nil })
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (_, response) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://127.0.0.1:\(upstreamPort)/x")!)
+    #expect((response as? HTTPURLResponse)?.statusCode == 499)
+    try await Task.sleep(nanoseconds: 200_000_000)
+    #expect(await store.all().first?.response?.status == 499)
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}

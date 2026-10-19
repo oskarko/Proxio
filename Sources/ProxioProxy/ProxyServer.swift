@@ -17,6 +17,7 @@ public final class ProxyServer: @unchecked Sendable {
     /// - Parameters:
     ///   - ca: when set, CONNECT tunnels are intercepted (TLS terminated and re-originated); otherwise they are relayed opaquely.
     ///   - sslProxying: which hosts are intercepted when `ca` is set; the rest are tunnelled opaquely. Can be changed while running.
+    ///   - rules: live breakpoints (and later rewrite rules) applied to each request and response.
     ///   - upstreamTLS: client TLS settings used to reach origin servers when intercepting.
     public init(
         store: FlowStore,
@@ -24,11 +25,12 @@ public final class ProxyServer: @unchecked Sendable {
         port: Int = 9090,
         ca: CertificateAuthority? = nil,
         upstreamTLS: TLSConfiguration? = nil,
-        sslProxying: SSLProxyingPolicy = SSLProxyingPolicy()
+        sslProxying: SSLProxyingPolicy = SSLProxyingPolicy(),
+        rules: TrafficRules = TrafficRules()
     ) throws {
         var tls = upstreamTLS ?? TLSConfiguration.makeClientConfiguration()
         tls.applicationProtocols = ["http/1.1"]
-        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: try NIOSSLContext(configuration: tls))
+        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: try NIOSSLContext(configuration: tls), rules: rules)
         self.host = host
         self.requestedPort = port
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
