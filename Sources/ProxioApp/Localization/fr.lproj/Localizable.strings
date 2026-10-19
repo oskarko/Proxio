@@ -36,6 +36,7 @@
 "Compose…" = "Composer…";
 "Console" = "Console";
 "Copy as cURL" = "Copier en cURL";
+"Could not parse: %@" = "Impossible d'analyser : %@";
 "Could not save rules: %@" = "Impossible d’enregistrer les règles : %@";
 "Could not start: %@" = "Démarrage impossible : %@";
 "Data" = "Données";
@@ -61,6 +62,8 @@
 "Helper change failed: %@" = "Échec de la modification de l’assistant : %@";
 "Hex" = "Hex";
 "Identical" = "Identiques";
+"Import .proto Files…" = "Importer des fichiers .proto…";
+"Imported .proto files" = "Fichiers .proto importés";
 "Include…" = "Inclure…";
 "Inline" = "En ligne";
 "Install and Trust" = "Installer et approuver";
@@ -115,6 +118,7 @@
 "Raw" = "Brut";
 "Reason" = "Motif";
 "Remove" = "Supprimer";
+"Remove Imported .proto Files" = "Supprimer les fichiers .proto importés";
 "Remove the Proxio root certificate?" = "Supprimer le certificat racine de Proxio ?";
 "Remove…" = "Supprimer…";
 "Repeat" = "Rejouer";

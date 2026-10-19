@@ -16,7 +16,7 @@ struct InspectorView: View {
                         headers: flow.request.headers, payload: flow.request.decodedBody,
                         mime: header("Content-Type", in: flow.request.headers), query: queryItems,
                         raw: rawText(start: "\(flow.request.method) \(requestTarget) \(flow.request.httpVersion)", headers: flow.request.headers, body: flow.request.decodedBody),
-                        messages: []
+                        messages: [], grpcPath: flow.request.url.path, isRequest: true
                     )
                 }
                 .frame(minWidth: 280)
@@ -25,7 +25,7 @@ struct InspectorView: View {
                         MessageView(
                             headers: r.headers + r.trailers, payload: r.decodedBody, mime: r.mimeType, query: [],
                             raw: rawText(start: "\(r.httpVersion) \(r.status) \(r.reason)", headers: r.headers, body: r.decodedBody, trailers: r.trailers),
-                            messages: flow.messages
+                            messages: flow.messages, grpcPath: flow.request.url.path, isRequest: false
                         )
                     } else {
                         ContentUnavailableView("No response yet", systemImage: "hourglass")
@@ -96,6 +96,8 @@ private struct MessageView: View {
     let query: [HTTPHeader]
     let raw: String
     let messages: [WebSocketMessage]
+    var grpcPath: String? = nil
+    var isRequest = false
     @State private var tab: Tab = .body
     enum Tab: CaseIterable {
         case headers, query, body, raw, messages
@@ -123,7 +125,7 @@ private struct MessageView: View {
             switch tab {
             case .headers: KeyValueTable(rows: headers)
             case .query: KeyValueTable(rows: query)
-            case .body: BodyView(data: payload, mime: mime)
+            case .body: BodyView(data: payload, mime: mime, grpcPath: grpcPath, isRequest: isRequest)
             case .raw:
                 ScrollView([.horizontal, .vertical]) {
                     Text(raw).font(.system(.body, design: .monospaced)).textSelection(.enabled)
@@ -149,6 +151,8 @@ private struct KeyValueTable: View {
 private struct BodyView: View {
     let data: Data
     let mime: String
+    var grpcPath: String? = nil
+    var isRequest = false
     @State private var mode: Mode = .pretty
     enum Mode: CaseIterable {
         case pretty, raw, hex
@@ -185,7 +189,7 @@ private struct BodyView: View {
 
     private var rendered: String {
         switch mode {
-        case .pretty: BodyFormatter.prettyJSON(data) ?? BodyFormatter.prettyProtobuf(data, contentType: mime) ?? String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
+        case .pretty: BodyFormatter.prettyJSON(data) ?? BodyFormatter.prettyProtobuf(data, contentType: mime, grpcPath: grpcPath, isRequest: isRequest) ?? String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .raw: String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .hex: BodyFormatter.hexDump(data)
         }

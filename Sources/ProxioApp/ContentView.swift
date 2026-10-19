@@ -161,7 +161,7 @@ private struct Detail: View {
 
     var body: some View {
         if let flow = model.selectedFlow {
-            InspectorView(flow: flow).id(flow.id)
+            InspectorView(flow: flow).id("\(flow.id)-\(model.selectionRevision)")
         } else if model.selectedPair != nil {
             ContentUnavailableView {
                 Label("2 requests selected", systemImage: "arrow.left.arrow.right.square")

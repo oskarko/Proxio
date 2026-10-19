@@ -26,6 +26,8 @@ final class AppModel {
     var showScripting = false
     var helperState: HelperState = HelperInstaller().state
     var showDiff = false
+    /// Bumped when the imported schemas change so the inspector re-renders.
+    var selectionRevision = 0
 
     // Proxy
     var port = 9090
@@ -204,6 +206,22 @@ final class AppModel {
         let snapshot = flows
         do { try HARExporter.export(snapshot).write(to: url) }
         catch { status = String(localized: "Export failed: \(error.localizedDescription)") }
+    }
+
+    func importProtos() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.init(filenameExtension: "proto") ?? .data]
+        guard panel.runModal() == .OK else { return }
+        let bad = ProtoRegistry.shared.importFiles(panel.urls)
+        status = bad.isEmpty ? String(localized: "Imported .proto files") : String(localized: "Could not parse: \(bad.joined(separator: ", "))")
+        selectionRevision += 1
+    }
+
+    func clearProtos() {
+        ProtoRegistry.shared.clear()
+        selectionRevision += 1
     }
 
     // MARK: System changes (always confirmed with the exact action)

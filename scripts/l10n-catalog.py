@@ -10,6 +10,10 @@ extract = importlib.util.module_from_spec(spec); spec.loader.exec_module(extract
 
 # key: (es, ru, fr)
 T = {
+"Import .proto Files…": ("Importar archivos .proto…", "Импортировать файлы .proto…", "Importer des fichiers .proto…"),
+"Remove Imported .proto Files": ("Quitar archivos .proto importados", "Удалить импортированные файлы .proto", "Supprimer les fichiers .proto importés"),
+"Imported .proto files": ("Archivos .proto importados", "Файлы .proto импортированы", "Fichiers .proto importés"),
+"Could not parse: %@": ("No se pudo analizar: %@", "Не удалось разобрать: %@", "Impossible d'analyser : %@"),
 "Scripting…": ("Scripts…", "Скрипты…", "Scripts…"),
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request.": (
  "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.",

@@ -41,7 +41,7 @@ Tools → Scripting… (⇧⌘J) holds JavaScript scripts (run with the system J
 
 ### gRPC and Protobuf
 
-Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split into length-prefixed messages and shown in the inspector as raw protobuf (`protoc --decode_raw` style: nested messages, strings, varints, fixed-width values; gzip-compressed messages are inflated), with trailers frames listed. `application/x-protobuf` bodies are decoded the same way. Field names need a `.proto`, which is not supported yet. Native gRPC is captured too, since intercepted tunnels speak HTTP/2 (see below); trailers such as `grpc-status` are kept and shown.
+Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split into length-prefixed messages and shown in the inspector as raw protobuf (`protoc --decode_raw` style: nested messages, strings, varints, fixed-width values; gzip-compressed messages are inflated), with trailers frames listed. `application/x-protobuf` bodies are decoded the same way. Import `.proto` files with Tools → Import .proto Files… (copied to `~/Library/Application Support/Proxio/protos`) and gRPC messages are shown with field names and types, chosen from the request path `/package.Service/Method`; unknown fields stay raw. Plain `application/x-protobuf` bodies have no method to pick a type from, so they stay schemaless. Not supported: `import` resolution across files (put related messages in one file or import all of them), extensions and groups. Native gRPC is captured too, since intercepted tunnels speak HTTP/2 (see below); trailers such as `grpc-status` are kept and shown.
 
 ### HTTP/2 and keep-alive
 

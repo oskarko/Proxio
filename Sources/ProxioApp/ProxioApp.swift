@@ -36,6 +36,8 @@ struct ProxioApp: App {
                 Button("Breakpoints…") { model.showBreakpoints = true }.keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Map Local / Remote…") { model.showMapRules = true }.keyboardShortcut("m", modifiers: [.command, .shift])
                 Button("Scripting…") { model.showScripting = true }.keyboardShortcut("j", modifiers: [.command, .shift])
+                Button("Import .proto Files…") { model.importProtos() }
+                Button("Remove Imported .proto Files") { model.clearProtos() }
                 Divider()
                 Button("Compose…") { model.compose(from: model.selectedFlow.flatMap { $0.request.method == "CONNECT" ? nil : $0 }) }
                     .keyboardShortcut("n")

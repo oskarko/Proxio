@@ -50,3 +50,65 @@ import Foundation
         #expect(BodyFormatter.prettyProtobuf(Data([1, 2]), contentType: "application/json") == nil)
     }
 }
+
+@Suite struct ProtoSchemaTests {
+    static let source = """
+    syntax = "proto3";
+    package demo.v1;
+    // comment
+    enum Color { RED = 0; GREEN = 1; }
+    message Point { sint32 x = 1; double y = 2; }
+    message Req {
+      string name = 1;
+      int32 delta = 2;
+      Color color = 3;
+      repeated int32 ids = 4;
+      Point at = 5;
+      map<string, int32> scores = 6;
+      oneof pick { bool flag = 7; }
+      message Inner { string v = 1; }
+      Inner inner = 8;
+    }
+    service Greeter { rpc Hello (Req) returns (stream Point); }
+    """
+
+    @Test func parsesAndNamesFields() throws {
+        var schema = ProtoSchema()
+        let parsed = schema.add(source: Self.source)
+        #expect(parsed)
+        #expect(schema.methods["/demo.v1.Greeter/Hello"] == .init(input: "demo.v1.Req", output: "demo.v1.Point"))
+        var d = Data([0x0a, 2, 0x61, 0x62, 0x10])
+        d.append(contentsOf: [UInt8](repeating: 0xff, count: 9) + [0x01])
+        d.append(contentsOf: [0x18, 0x01, 0x22, 0x02, 0x01, 0x02, 0x2a, 0x02, 0x08, 0x03, 0x38, 0x01, 0x42, 0x03, 0x0a, 0x01, 0x7a])
+        let text = try #require(schema.render(d, as: "demo.v1.Req"))
+        #expect(text == """
+        name: "ab"
+        delta: -1
+        color: GREEN
+        ids: 1
+        ids: 2
+        at {
+          x: -2
+        }
+        flag: true
+        inner {
+          v: "z"
+        }
+        """)
+    }
+
+    @Test func unknownFieldsFallBackToRaw() throws {
+        var schema = ProtoSchema()
+        schema.add(source: Self.source)
+        let text = try #require(schema.render(Data([0x58, 0x05]), as: "demo.v1.Req"))
+        #expect(text == "11: 5")
+    }
+
+    @Test func grpcBodyUsesMethodTypes() throws {
+        var schema = ProtoSchema()
+        schema.add(source: Self.source)
+        var body = Data([0, 0, 0, 0, 3]); body.append(contentsOf: [0x0a, 0x01, 0x78])
+        let text = try #require(GRPC.render(body, contentType: "application/grpc", messageType: "demo.v1.Req", schema: schema))
+        #expect(text == "# message 1\nname: \"x\"")
+    }
+}

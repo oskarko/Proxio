@@ -132,10 +132,14 @@ public enum GRPC {
     }
 
     /// Human-readable view of a gRPC body: one block per message, decoded as raw protobuf where possible.
-    public static func render(_ data: Data, contentType: String?) -> String? {
+    public static func render(_ data: Data, contentType: String?, messageType: String? = nil, schema: ProtoSchema? = nil) -> String? {
         guard let frames = frames(from: data, contentType: contentType) else { return nil }
         var blocks: [String] = []
         var n = 0
+        func body(_ payload: Data) -> String? {
+            if let t = messageType, let schema, let text = schema.render(payload, as: t) { return text }
+            return ProtobufDecoder.decode(payload).map { ProtobufDecoder.render($0) }
+        }
         for f in frames {
             if f.isTrailers {
                 blocks.append("# trailers\n" + (String(data: f.payload, encoding: .utf8) ?? "<\(f.payload.count) bytes>"))
@@ -145,15 +149,15 @@ public enum GRPC {
             let header = "# message \(n)" + (f.isCompressed ? " (compressed, \(f.payload.count) bytes)" : "")
             if f.isCompressed {
                 let inflated = ContentDecoder.decode(f.payload, encoding: "gzip")
-                if let inflated, let fields = ProtobufDecoder.decode(inflated) {
-                    blocks.append(header + "\n" + ProtobufDecoder.render(fields))
+                if let inflated, let text = body(inflated) {
+                    blocks.append(header + "\n" + text)
                 } else {
                     blocks.append(header + "\n" + BodyFormatter.hexDump(f.payload))
                 }
             } else if f.payload.isEmpty {
                 blocks.append(header + "\n(empty)")
-            } else if let fields = ProtobufDecoder.decode(f.payload) {
-                blocks.append(header + "\n" + ProtobufDecoder.render(fields))
+            } else if let text = body(f.payload) {
+                blocks.append(header + "\n" + text)
             } else {
                 blocks.append(header + "\n" + BodyFormatter.hexDump(f.payload))
             }
@@ -164,8 +168,12 @@ public enum GRPC {
 
 public extension BodyFormatter {
     /// Pretty text for gRPC and raw protobuf bodies, or nil for other content types.
-    static func prettyProtobuf(_ data: Data, contentType: String?) -> String? {
-        if GRPC.isGRPC(contentType: contentType) { return GRPC.render(data, contentType: contentType) }
+    static func prettyProtobuf(_ data: Data, contentType: String?, grpcPath: String? = nil, isRequest: Bool = false) -> String? {
+        if GRPC.isGRPC(contentType: contentType) {
+            let schema = ProtoRegistry.shared.schema
+            let method = grpcPath.flatMap { schema.methods[$0] }
+            return GRPC.render(data, contentType: contentType, messageType: isRequest ? method?.input : method?.output, schema: schema)
+        }
         guard let t = contentType?.lowercased(), t.contains("protobuf") || t.contains("x-protobuf") else { return nil }
         return ProtobufDecoder.decode(data).map { ProtobufDecoder.render($0) }
     }

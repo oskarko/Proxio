@@ -36,6 +36,7 @@
 "Compose…" = "Составить…";
 "Console" = "Консоль";
 "Copy as cURL" = "Копировать как cURL";
+"Could not parse: %@" = "Не удалось разобрать: %@";
 "Could not save rules: %@" = "Не удалось сохранить правила: %@";
 "Could not start: %@" = "Не удалось запустить: %@";
 "Data" = "Данные";
@@ -61,6 +62,8 @@
 "Helper change failed: %@" = "Не удалось изменить помощник: %@";
 "Hex" = "Hex";
 "Identical" = "Идентичны";
+"Import .proto Files…" = "Импортировать файлы .proto…";
+"Imported .proto files" = "Файлы .proto импортированы";
 "Include…" = "Включить…";
 "Inline" = "Встроенный";
 "Install and Trust" = "Установить и доверять";
@@ -115,6 +118,7 @@
 "Raw" = "Исходный";
 "Reason" = "Причина";
 "Remove" = "Удалить";
+"Remove Imported .proto Files" = "Удалить импортированные файлы .proto";
 "Remove the Proxio root certificate?" = "Удалить корневой сертификат Proxio?";
 "Remove…" = "Удалить…";
 "Repeat" = "Повторить";
