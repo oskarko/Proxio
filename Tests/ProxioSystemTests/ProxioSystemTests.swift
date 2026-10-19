@@ -116,3 +116,40 @@ private let disabledProxy = CommandResult(stdout: "Enabled: No\nServer: \nPort: 
     store.clear()
     #expect(store.load() == nil)
 }
+
+// MARK: - Privileged helper validation
+
+@Suite struct HelperValidatorTests {
+    let services = HelperValidator.services(fromListing: "An asterisk (*) denotes that a network service is disabled.\nWi-Fi\n*Thunderbolt Bridge\nUSB 10/100/1000 LAN\n")
+
+    @Test func parsesEnabledServicesOnly() {
+        #expect(services == ["Wi-Fi", "USB 10/100/1000 LAN"])
+    }
+
+    @Test func acceptsOnlyUsablePortsAndKnownServices() {
+        #expect(HelperValidator.isValid(port: 8888))
+        #expect(!HelperValidator.isValid(port: 0))
+        #expect(!HelperValidator.isValid(port: 70000))
+        #expect(HelperValidator.isKnown(service: "Wi-Fi", in: services))
+        #expect(!HelperValidator.isKnown(service: "Wi-Fi; rm -rf /", in: services))
+    }
+
+    @Test func snapshotsMustNameAKnownServiceAndPlainHosts() {
+        let good = ProxySnapshot(service: "Wi-Fi", web: ProxyEndpoint(enabled: true, host: "proxy.corp.example", port: 3128), secureWeb: ProxyEndpoint(enabled: false))
+        #expect(HelperValidator.isValid(good, services: services))
+        var badService = good; badService.service = "Other"
+        #expect(!HelperValidator.isValid(badService, services: services))
+        var badHost = good; badHost.web.host = "evil host;$(x)"
+        #expect(!HelperValidator.isValid(badHost, services: services))
+        var badPort = good; badPort.secureWeb.port = 99999
+        #expect(!HelperValidator.isValid(badPort, services: services))
+    }
+
+    @Test func clientRequirementNeedsATeam() {
+        #expect(HelperValidator.clientRequirement(teamIdentifier: "") == nil)
+        #expect(HelperValidator.clientRequirement(teamIdentifier: "AB\"; or true") == nil)
+        let r = HelperValidator.clientRequirement(teamIdentifier: "934NVR3K3Z")
+        #expect(r?.contains("identifier \"dev.proxio.app\"") == true)
+        #expect(r?.contains("leaf[subject.OU] = \"934NVR3K3Z\"") == true)
+    }
+}

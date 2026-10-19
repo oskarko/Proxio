@@ -1,5 +1,6 @@
 import SwiftUI
 import ProxioCore
+import ProxioSystem
 
 struct ContentView: View {
     @Bindable var model: AppModel
@@ -266,6 +267,7 @@ struct SetupView: View {
                     get: { model.systemProxyOn },
                     set: { on in Task { await model.setSystemProxy(on) } }
                 )).disabled(!model.isRunning)
+                HelperRow(model: model)
             }
             Section("SSL proxying") {
                 Text("One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted.")
@@ -282,5 +284,38 @@ struct SetupView: View {
         .onChange(of: model.excludeText) { model.applyRules() }
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         .task { await model.refreshSystemState() }
+    }
+}
+
+private struct HelperRow: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        switch model.helperState {
+        case .unavailable:
+            Text("The privileged helper is not part of this build, so macOS may ask for your password when the system proxy changes.")
+                .font(.caption).foregroundStyle(.secondary)
+        case .notRegistered:
+            HStack {
+                Text("Privileged helper: not installed").foregroundStyle(.secondary)
+                Spacer()
+                Button("Install…") { model.installHelper() }
+            }
+            Text("Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting.")
+                .font(.caption).foregroundStyle(.secondary)
+        case .requiresApproval:
+            HStack {
+                Text("Privileged helper: waiting for approval").foregroundStyle(.secondary)
+                Spacer()
+                Button("Open Login Items…") { HelperInstaller().openLoginItemsSettings() }
+                Button("Remove") { model.removeHelper() }
+            }
+        case .enabled:
+            HStack {
+                Label("Privileged helper active", systemImage: "checkmark.shield")
+                Spacer()
+                Button("Remove") { model.removeHelper() }
+            }
+        }
     }
 }

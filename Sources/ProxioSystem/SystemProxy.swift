@@ -40,6 +40,11 @@ public struct SystemProxy: Sendable {
         return service
     }
 
+    /// Raw `networksetup -listallnetworkservices` output.
+    public func listAllNetworkServices() throws -> String {
+        try runner.check(Self.networksetup, ["-listallnetworkservices"]).stdout
+    }
+
     public func snapshot(service: String) throws -> ProxySnapshot {
         ProxySnapshot(
             service: service,

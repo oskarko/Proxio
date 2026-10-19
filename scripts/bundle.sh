@@ -1,5 +1,8 @@
 #!/bin/sh
-# Builds build/Proxio.app (ad-hoc signed) from the ProxioApp executable.
+# Builds build/Proxio.app from the ProxioApp executable.
+# Ad-hoc signed by default. With PROXIO_SIGN_IDENTITY set (e.g. "Apple Development: Name (TEAMID)"),
+# the privileged helper is built, embedded as a launch daemon and everything is signed with that identity;
+# the helper only serves apps signed by the same team.
 set -e
 cd "$(dirname "$0")/.."
 swift build -c release --product ProxioApp
@@ -28,5 +31,23 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
-codesign --force --sign - "$APP"
+if [ -n "$PROXIO_SIGN_IDENTITY" ]; then
+  swift build -c release --product ProxioHelper
+  mkdir -p "$APP/Contents/Library/LaunchDaemons"
+  cp "$(swift build -c release --show-bin-path)/ProxioHelper" "$APP/Contents/MacOS/dev.proxio.helper"
+  cat > "$APP/Contents/Library/LaunchDaemons/dev.proxio.helper.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>dev.proxio.helper</string>
+  <key>BundleProgram</key><string>Contents/MacOS/dev.proxio.helper</string>
+  <key>MachServices</key><dict><key>dev.proxio.helper</key><true/></dict>
+  <key>AssociatedBundleIdentifiers</key><array><string>dev.proxio.app</string></array>
+</dict></plist>
+PLIST
+  codesign --force --options runtime --identifier dev.proxio.helper --sign "$PROXIO_SIGN_IDENTITY" "$APP/Contents/MacOS/dev.proxio.helper"
+  codesign --force --sign "$PROXIO_SIGN_IDENTITY" "$APP"
+else
+  codesign --force --sign - "$APP"
+fi
 echo "Built $APP"

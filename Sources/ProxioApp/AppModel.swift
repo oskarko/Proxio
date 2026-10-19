@@ -24,6 +24,7 @@ final class AppModel {
     var showBreakpoints = false
     var showMapRules = false
     var showScripting = false
+    var helperState: HelperState = HelperInstaller().state
     var showDiff = false
 
     // Proxy
@@ -251,6 +252,17 @@ final class AppModel {
         } catch { status = String(localized: "CA removal failed: \(error.localizedDescription)") }
     }
 
+    func installHelper() {
+        do { try HelperInstaller().register() } catch { status = String(localized: "Helper change failed: \(error.localizedDescription)") }
+        helperState = HelperInstaller().state
+        if helperState == .requiresApproval { HelperInstaller().openLoginItemsSettings() }
+    }
+
+    func removeHelper() {
+        do { try HelperInstaller().unregister() } catch { status = String(localized: "Helper change failed: \(error.localizedDescription)") }
+        helperState = HelperInstaller().state
+    }
+
     func revealCertificate() {
         NSWorkspace.shared.activateFileViewerSelecting([caURL])
     }
@@ -266,10 +278,19 @@ final class AppModel {
                     message: String(localized: "The HTTP and HTTPS proxy of \"\(service)\" will be set to 127.0.0.1:\(port). Your current settings are saved and restored when you turn this off or stop the proxy."),
                     action: String(localized: "Enable")
                 ) else { return }
-                let previous = try await Task.detached { try SystemProxy().enable(host: "127.0.0.1", port: port, service: service) }.value
+                let previous: ProxySnapshot
+                if helperState == .enabled, let viaHelper = try? await HelperClient().enableProxy(port: port, service: service) {
+                    previous = viaHelper
+                } else {
+                    previous = try await Task.detached { try SystemProxy().enable(host: "127.0.0.1", port: port, service: service) }.value
+                }
                 if snapshots.load() == nil { try snapshots.save(previous) }
             } else if let snapshot = snapshots.load() {
-                try await Task.detached { try SystemProxy().restore(snapshot) }.value
+                if helperState == .enabled, (try? await HelperClient().restoreProxy(snapshot)) != nil {
+                    // restored without a password prompt
+                } else {
+                    try await Task.detached { try SystemProxy().restore(snapshot) }.value
+                }
                 snapshots.clear()
             }
             systemProxyOn = snapshots.load() != nil

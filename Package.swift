@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "ProxioSystem", targets: ["ProxioSystem"]),
         .executable(name: "ProxioApp", targets: ["ProxioApp"]),
         .executable(name: "proxio-cli", targets: ["proxio-cli"]),
+        .executable(name: "ProxioHelper", targets: ["ProxioHelper"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.70.0"),
@@ -37,6 +38,11 @@ let package = Package(
             name: "ProxioApp",
             dependencies: ["ProxioCore", "ProxioProxy", "ProxioSystem"],
             exclude: ["Localization"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "ProxioHelper",
+            dependencies: ["ProxioSystem"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
