@@ -4,6 +4,7 @@ import ProxioCore
 struct ContentView: View {
     @Bindable var model: AppModel
     @State private var showSetup = false
+    @State private var showBreakpoints = false
 
     var body: some View {
         NavigationSplitView {
@@ -36,6 +37,7 @@ struct ContentView: View {
             .contextMenu(forSelectionType: UUID.self) { ids in
                 if let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
                     Button("Copy as cURL") { model.copyCURL(flow) }
+                    Button("Add Breakpoint for \(flow.request.url.host ?? "host")") { model.addBreakpoint(for: flow) }
                 }
             }
             .navigationSplitViewColumnWidth(min: 380, ideal: 560)
@@ -56,6 +58,10 @@ struct ContentView: View {
                 Button { model.clear() } label: { Label("Clear", systemImage: "trash") }
                 Button { model.exportHAR() } label: { Label("Export HAR", systemImage: "square.and.arrow.up") }
                     .disabled(model.flows.isEmpty)
+                Button { showBreakpoints = true } label: {
+                    Label("Breakpoints", systemImage: model.paused.isEmpty ? "pause.circle" : "pause.circle.fill")
+                }
+                .badge(model.paused.count)
                 Button { showSetup = true } label: { Label("Setup", systemImage: "gearshape") }
             }
         }
@@ -69,6 +75,8 @@ struct ContentView: View {
             .padding(.horizontal, 12).padding(.vertical, 4).background(.bar)
         }
         .sheet(isPresented: $showSetup) { SetupView(model: model) }
+        .sheet(isPresented: $showBreakpoints) { BreakpointsView(model: model) }
+        .sheet(item: Binding(get: { model.paused.first }, set: { _ in })) { PausedEditor(message: $0, model: model).id($0.id) }
     }
 
     private func color(_ status: Int?) -> Color {

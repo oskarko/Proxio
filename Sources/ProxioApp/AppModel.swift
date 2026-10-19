@@ -23,12 +23,18 @@ final class AppModel {
     var caTrusted = false
     var systemProxyOn = false
 
+    // Breakpoints
+    var breakpoints: [Breakpoint] = [] { didSet { rules.breakpoints = breakpoints } }
+    var paused: [PausedMessage] = []
+
     // SSL proxying (one pattern per line)
     var includeText = ""
     var excludeText = ""
 
     private let store = FlowStore()
     private let policy = SSLProxyingPolicy()
+    private let rules = TrafficRules()
+    private let bridge = BreakpointBridge()
     private var server: ProxyServer?
     private var observer: Task<Void, Never>?
     private let snapshots = ProxySnapshotStore()
@@ -38,6 +44,8 @@ final class AppModel {
         observer = Task { [store] in
             for await snapshot in store.changes() { self.flows = snapshot }
         }
+        bridge.model = self
+        rules.breakpointHandler = bridge
         applyRules()
         Task { await refreshSystemState() }
     }
@@ -76,7 +84,7 @@ final class AppModel {
         do {
             ca = interceptHTTPS ? try CertificateAuthority.loadOrCreate() : nil
             applyRules()
-            let server = try ProxyServer(store: store, port: port, ca: ca, sslProxying: policy)
+            let server = try ProxyServer(store: store, port: port, ca: ca, sslProxying: policy, rules: rules)
             port = try await server.start()
             self.server = server
             isRunning = true
@@ -89,6 +97,7 @@ final class AppModel {
 
     func stop() async {
         if systemProxyOn { await setSystemProxy(false) }
+        for message in paused { release(message, with: nil) }
         try? await server?.stop()
         server = nil
         isRunning = false
