@@ -27,6 +27,10 @@ final class AppModel {
     var breakpoints: [Breakpoint] = [] { didSet { rules.breakpoints = breakpoints } }
     var paused: [PausedMessage] = []
 
+    // Rewrite rules
+    var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules } }
+    var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules } }
+
     // SSL proxying (one pattern per line)
     var includeText = ""
     var excludeText = ""
