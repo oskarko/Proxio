@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var showSetup = false
     @State private var showBreakpoints = false
     @State private var showMapRules = false
+    @State private var showDiff = false
 
     var body: some View {
         NavigationSplitView {
@@ -36,7 +37,9 @@ struct ContentView: View {
                 TableColumn("Time") { Text($0.duration > 0 ? "\(Int($0.duration * 1000)) ms" : "") }.width(65)
             }
             .contextMenu(forSelectionType: UUID.self) { ids in
-                if let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
+                if ids.count == 2 {
+                    Button("Compare") { model.selection = ids; showDiff = true }
+                } else if ids.count == 1, let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
                     Button("Copy as cURL") { model.copyCURL(flow) }
                     if flow.request.method != "CONNECT" {
                         Button("Repeat") { model.repeatRequest(flow) }
@@ -52,6 +55,12 @@ struct ContentView: View {
         } detail: {
             if let flow = model.selectedFlow {
                 InspectorView(flow: flow).id(flow.id)
+            } else if model.selectedPair != nil {
+                ContentUnavailableView {
+                    Label("2 requests selected", systemImage: "arrow.left.arrow.right.square")
+                } actions: {
+                    Button("Compare") { showDiff = true }.buttonStyle(.borderedProminent)
+                }
             } else {
                 ContentUnavailableView("Select a request", systemImage: "arrow.left.arrow.right", description: Text(model.status))
             }
@@ -73,6 +82,9 @@ struct ContentView: View {
                 Button { model.compose(from: model.selectedFlow.flatMap { $0.request.method == "CONNECT" ? nil : $0 }) } label: {
                     Label("Compose", systemImage: "square.and.pencil")
                 }
+                Button { showDiff = true } label: { Label("Compare", systemImage: "arrow.left.arrow.right.square") }
+                    .disabled(model.selectedPair == nil)
+                    .help("Select two requests to compare them")
                 Button { showMapRules = true } label: { Label("Map Local / Remote", systemImage: "arrow.triangle.swap") }
                 Button { showSetup = true } label: { Label("Setup", systemImage: "gearshape") }
             }
@@ -89,6 +101,9 @@ struct ContentView: View {
         .sheet(isPresented: $showSetup) { SetupView(model: model) }
         .sheet(isPresented: Binding(get: { model.composeDraft != nil }, set: { if !$0 { model.composeDraft = nil } })) {
             ComposeView(model: model)
+        }
+        .sheet(isPresented: $showDiff) {
+            if let (a, b) = model.selectedPair { DiffView(a: a, b: b) }
         }
         .sheet(isPresented: $showMapRules) { MapRulesView(model: model) }
         .sheet(isPresented: $showBreakpoints) { BreakpointsView(model: model) }

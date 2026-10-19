@@ -20,7 +20,7 @@ extension AppModel {
             for _ in 0..<max(1, times) {
                 let flow = await RequestSender().send(request, note: note)
                 await store.add(flow)
-                selection = flow.id
+                selection = [flow.id]
                 hostFilter = nil
             }
         }

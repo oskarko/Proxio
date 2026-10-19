@@ -9,7 +9,7 @@ import ProxioSystem
 final class AppModel {
     // Capture
     var flows: [Flow] = []
-    var selection: UUID?
+    var selection: Set<UUID> = []
     var searchText = ""
     var hostFilter: String?
 
@@ -94,7 +94,15 @@ final class AppModel {
         }
     }
 
-    var selectedFlow: Flow? { flows.first { $0.id == selection } }
+    /// The flow shown in the inspector: only when exactly one is selected.
+    var selectedFlow: Flow? { selection.count == 1 ? flows.first { $0.id == selection.first } : nil }
+
+    /// Two selected flows, in capture order, ready to compare.
+    var selectedPair: (Flow, Flow)? {
+        guard selection.count == 2 else { return nil }
+        let pair = flows.filter { selection.contains($0.id) }
+        return pair.count == 2 ? (pair[0], pair[1]) : nil
+    }
 
     private func matches(_ f: Flow, _ text: String) -> Bool {
         f.request.url.absoluteString.localizedCaseInsensitiveContains(text)
@@ -134,7 +142,7 @@ final class AppModel {
     }
 
     func clear() {
-        selection = nil
+        selection = []
         Task { await store.clear() }
     }
 

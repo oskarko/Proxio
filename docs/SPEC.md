@@ -23,7 +23,7 @@ Written from observable behaviour and the public list of open-source building bl
 ## Milestone 2
 
 Done: breakpoints (pause, edit or cancel requests and responses), Map Local (file or inline body), Map Remote (scheme/host/port/path), Compose/Repeat (sent directly, redirects not followed).
-Pending: Diff.
+Diff of two flows (start line, headers, body; request and response) is done as well.
 
 Rule order for each request: Map Remote rewrites the URL, Map Local (if it matches) answers without contacting the server, then the request breakpoint, then the upstream call, then the response breakpoint. Applied rules are listed in `Flow.notes`.
 
