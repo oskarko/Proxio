@@ -35,6 +35,7 @@ struct ProxioApp: App {
             CommandMenu("Tools") {
                 Button("Breakpoints…") { model.showBreakpoints = true }.keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Map Local / Remote…") { model.showMapRules = true }.keyboardShortcut("m", modifiers: [.command, .shift])
+                Button("Scripting…") { model.showScripting = true }.keyboardShortcut("j", modifiers: [.command, .shift])
                 Divider()
                 Button("Compose…") { model.compose(from: model.selectedFlow.flatMap { $0.request.method == "CONNECT" ? nil : $0 }) }
                     .keyboardShortcut("n")

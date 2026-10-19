@@ -23,6 +23,7 @@ final class AppModel {
     var showSetup = false
     var showBreakpoints = false
     var showMapRules = false
+    var showScripting = false
     var showDiff = false
 
     // Proxy
@@ -45,6 +46,9 @@ final class AppModel {
     // Rewrite rules
     var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules; scheduleSave() } }
     var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules; scheduleSave() } }
+    var scripts: [ProxioScript] = [] { didSet { rules.scripts = scripts; scheduleSave() } }
+    /// Recent `console.log` output from scripts, newest last.
+    var scriptLog: [String] = []
 
     // SSL proxying (one pattern per line)
     var includeText = ""
@@ -70,10 +74,19 @@ final class AppModel {
         breakpoints = saved.breakpoints
         mapLocalRules = saved.mapLocal
         mapRemoteRules = saved.mapRemote
+        scripts = saved.scripts
         // didSet observers do not run inside init, so hand the loaded rules to the proxy explicitly.
         rules.breakpoints = saved.breakpoints
         rules.mapLocalRules = saved.mapLocal
         rules.mapRemoteRules = saved.mapRemote
+        rules.scripts = saved.scripts
+        rules.scriptEngine.onLog = { [weak self] name, text in
+            Task { @MainActor in
+                guard let self else { return }
+                self.scriptLog.append("[\(name)] \(text)")
+                if self.scriptLog.count > 500 { self.scriptLog.removeFirst(self.scriptLog.count - 500) }
+            }
+        }
         rules.breakpointHandler = bridge
         applyRules()
         Task { await refreshSystemState() }
@@ -86,7 +99,7 @@ final class AppModel {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard !Task.isCancelled, let self else { return }
             do {
-                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules))
+                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules, scripts: scripts))
             } catch { status = String(localized: "Could not save rules: \(error.localizedDescription)") }
         }
     }

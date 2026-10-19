@@ -10,6 +10,16 @@ extract = importlib.util.module_from_spec(spec); spec.loader.exec_module(extract
 
 # key: (es, ru, fr)
 T = {
+"Scripting…": ("Scripts…", "Скрипты…", "Scripts…"),
+"Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request.": (
+ "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.",
+ "Скрипты на JavaScript могут изменять подходящие запросы и ответы. Определите onRequest(request) и/или onResponse(request, response) и верните объект. Пишите короткие скрипты: скрипт, который не завершается, блокирует свой запрос.",
+ "Les scripts peuvent modifier en JavaScript les requêtes et réponses correspondantes. Définissez onRequest(request) et/ou onResponse(request, response) et renvoyez l’objet. Gardez les scripts courts : un script qui ne se termine jamais bloque sa requête."),
+"No scripts": ("Sin scripts", "Нет скриптов", "Aucun script"),
+"Select a script": ("Selecciona un script", "Выберите скрипт", "Sélectionnez un script"),
+"Console": ("Consola", "Консоль", "Console"),
+"No console output yet": ("Aún no hay salida de consola", "Вывода консоли пока нет", "Aucune sortie console pour l’instant"),
+"New script": ("Nuevo script", "Новый скрипт", "Nouveau script"),
 "Stopped": ("Detenido", "Остановлен", "Arrêté"),
 "Could not save rules: %@": ("No se pudieron guardar las reglas: %@", "Не удалось сохранить правила: %@", "Impossible d’enregistrer les règles : %@"),
 "Listening on 127.0.0.1:%lld": ("Escuchando en 127.0.0.1:%lld", "Прослушивание на 127.0.0.1:%lld", "À l’écoute sur 127.0.0.1:%lld"),

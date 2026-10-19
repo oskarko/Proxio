@@ -660,3 +660,36 @@ private func waitFor(_ condition: () async -> Bool) async -> Bool {
     try await origin.close()
     try await group.shutdownGracefully()
 }
+
+// MARK: - Scripting
+
+@Test func scriptsRewriteTheRequestAndTheResponse() async throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    let upstream = try await startEchoUpstream(group)
+    let upstreamPort = upstream.localAddress!.port!
+
+    let rules = TrafficRules()
+    rules.scripts = [ProxioScript(name: "rewrite", source: """
+    function onRequest(r) { r.headers["X-Edit"] = "from-script"; return r; }
+    function onResponse(req, res) { res.body = res.body.toUpperCase(); res.headers["X-Scripted"] = "yes"; res.status = 203; return res; }
+    """)]
+    let store = FlowStore()
+    let proxy = try ProxyServer(store: store, port: 0, rules: rules)
+    let proxyPort = try await proxy.start()
+
+    let (data, response) = try await proxiedSession(port: proxyPort).data(from: URL(string: "http://127.0.0.1:\(upstreamPort)/hello")!)
+    let http = response as? HTTPURLResponse
+    #expect(http?.statusCode == 203)
+    #expect(http?.value(forHTTPHeaderField: "X-Scripted") == "yes")
+    #expect(String(data: data, encoding: .utf8)?.contains("X-EDIT=FROM-SCRIPT") == true)
+
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let flow = await store.all().first
+    #expect(flow?.notes == ["Script: rewrite"] || flow?.notes.contains("Script: rewrite") == true)
+    #expect(flow?.request.headers.contains(HTTPHeader(name: "X-Edit", value: "from-script")) == true)
+    #expect(flow?.response?.status == 203)
+
+    try await proxy.stop()
+    try await upstream.close().get()
+    try await group.shutdownGracefully()
+}

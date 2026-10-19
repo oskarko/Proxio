@@ -35,6 +35,10 @@ Proxio is an independent clean-room project. It is not affiliated with any comme
 
 A `101 Switching Protocols` upgrade is relayed byte for byte while a passive parser records every text, binary, close, ping and pong frame (per direction, 1 MB stored per message). `permessage-deflate` is not negotiated so frames stay readable. Messages show in the inspector and in HAR exports.
 
+### Scripting
+
+Tools → Scripting… (⇧⌘J) holds JavaScript scripts (run with the system JavaScriptCore), each with an optional method and URL pattern. A script may define `onRequest(request)` and/or `onResponse(request, response)` and returns the object; `request` is `{method, url, headers, body}` and `response` is `{status, headers, body}`, with headers as a `{Name: value}` object and `body` a string (`null` for binary bodies, which are kept unless you assign a string). Response bodies arrive decompressed, and editing one drops `Content-Encoding`. `console.log` goes to the console panel. Scripts have no network, file or process access. A throwing script leaves the traffic unchanged and adds a note to the flow. JavaScriptCore cannot interrupt a script that never returns, so such a script blocks its own request. Scripts are saved with the other rules in `rules.json`.
+
 ### gRPC and Protobuf
 
 Bodies with `application/grpc*` (including gRPC-Web and gRPC-Web-Text) are split into length-prefixed messages and shown in the inspector as raw protobuf (`protoc --decode_raw` style: nested messages, strings, varints, fixed-width values; gzip-compressed messages are inflated), with trailers frames listed. `application/x-protobuf` bodies are decoded the same way. Field names need a `.proto`, which is not supported yet. Native gRPC runs over HTTP/2, which the proxy does not speak yet (see roadmap), so today this works for gRPC-Web and any protobuf over HTTP/1.1.

@@ -34,6 +34,7 @@
 "Compare Selected" = "Compare Selected";
 "Compose" = "Compose";
 "Compose…" = "Compose…";
+"Console" = "Console";
 "Copy as cURL" = "Copy as cURL";
 "Could not save rules: %@" = "Could not save rules: %@";
 "Could not start: %@" = "Could not start: %@";
@@ -78,11 +79,14 @@
 "Move to Keychain" = "Move to Keychain";
 "Name" = "Name";
 "Neither request has a response" = "Neither request has a response";
+"New script" = "New script";
 "No Map Local rules" = "No Map Local rules";
 "No Map Remote rules" = "No Map Remote rules";
 "No breakpoints" = "No breakpoints";
+"No console output yet" = "No console output yet";
 "No differences" = "No differences";
 "No response yet" = "No response yet";
+"No scripts" = "No scripts";
 "Not recording" = "Not recording";
 "Not trusted" = "Not trusted";
 "Nothing is installed until you confirm the exact command." = "Nothing is installed until you confirm the exact command.";
@@ -117,9 +121,12 @@
 "Root certificate" = "Root certificate";
 "Route %@ traffic through Proxio?" = "Route %@ traffic through Proxio?";
 "SSL proxying" = "SSL proxying";
+"Scripting…" = "Scripting…";
+"Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request.";
 "Select a message" = "Select a message";
 "Select a request" = "Select a request";
 "Select a rule" = "Select a rule";
+"Select a script" = "Select a script";
 "Select two requests to compare them" = "Select two requests to compare them";
 "Send" = "Send";
 "Send %lld×" = "Send %lld×";

@@ -34,6 +34,7 @@
 "Compare Selected" = "Сравнить выбранное";
 "Compose" = "Составить";
 "Compose…" = "Составить…";
+"Console" = "Консоль";
 "Copy as cURL" = "Копировать как cURL";
 "Could not save rules: %@" = "Не удалось сохранить правила: %@";
 "Could not start: %@" = "Не удалось запустить: %@";
@@ -78,11 +79,14 @@
 "Move to Keychain" = "Переместить в связку ключей";
 "Name" = "Имя";
 "Neither request has a response" = "Ни у одного запроса нет ответа";
+"New script" = "Новый скрипт";
 "No Map Local rules" = "Нет правил Map Local";
 "No Map Remote rules" = "Нет правил Map Remote";
 "No breakpoints" = "Нет точек останова";
+"No console output yet" = "Вывода консоли пока нет";
 "No differences" = "Различий нет";
 "No response yet" = "Ответа пока нет";
+"No scripts" = "Нет скриптов";
 "Not recording" = "Запись остановлена";
 "Not trusted" = "Не доверенный";
 "Nothing is installed until you confirm the exact command." = "Ничего не устанавливается, пока вы не подтвердите точную команду.";
@@ -117,9 +121,12 @@
 "Root certificate" = "Корневой сертификат";
 "Route %@ traffic through Proxio?" = "Направлять трафик %@ через Proxio?";
 "SSL proxying" = "SSL-проксирование";
+"Scripting…" = "Скрипты…";
+"Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Скрипты на JavaScript могут изменять подходящие запросы и ответы. Определите onRequest(request) и/или onResponse(request, response) и верните объект. Пишите короткие скрипты: скрипт, который не завершается, блокирует свой запрос.";
 "Select a message" = "Выберите сообщение";
 "Select a request" = "Выберите запрос";
 "Select a rule" = "Выберите правило";
+"Select a script" = "Выберите скрипт";
 "Select two requests to compare them" = "Выберите два запроса для сравнения";
 "Send" = "Отправить";
 "Send %lld×" = "Отправить %lld×";

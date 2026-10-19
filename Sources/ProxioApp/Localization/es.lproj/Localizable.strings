@@ -34,6 +34,7 @@
 "Compare Selected" = "Comparar selección";
 "Compose" = "Redactar";
 "Compose…" = "Redactar…";
+"Console" = "Consola";
 "Copy as cURL" = "Copiar como cURL";
 "Could not save rules: %@" = "No se pudieron guardar las reglas: %@";
 "Could not start: %@" = "No se pudo iniciar: %@";
@@ -78,11 +79,14 @@
 "Move to Keychain" = "Mover al llavero";
 "Name" = "Nombre";
 "Neither request has a response" = "Ninguna petición tiene respuesta";
+"New script" = "Nuevo script";
 "No Map Local rules" = "Sin reglas Map Local";
 "No Map Remote rules" = "Sin reglas Map Remote";
 "No breakpoints" = "Sin puntos de interrupción";
+"No console output yet" = "Aún no hay salida de consola";
 "No differences" = "Sin diferencias";
 "No response yet" = "Aún sin respuesta";
+"No scripts" = "Sin scripts";
 "Not recording" = "Sin grabar";
 "Not trusted" = "Sin confianza";
 "Nothing is installed until you confirm the exact command." = "No se instala nada hasta que confirmes el comando exacto.";
@@ -117,9 +121,12 @@
 "Root certificate" = "Certificado raíz";
 "Route %@ traffic through Proxio?" = "¿Dirigir el tráfico de %@ por Proxio?";
 "SSL proxying" = "Proxy SSL";
+"Scripting…" = "Scripts…";
+"Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.";
 "Select a message" = "Selecciona un mensaje";
 "Select a request" = "Selecciona una petición";
 "Select a rule" = "Selecciona una regla";
+"Select a script" = "Selecciona un script";
 "Select two requests to compare them" = "Selecciona dos peticiones para compararlas";
 "Send" = "Enviar";
 "Send %lld×" = "Enviar %lld×";

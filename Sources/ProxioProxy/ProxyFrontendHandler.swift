@@ -147,6 +147,9 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             flow.request.url = rewritten
             flow.notes.append(rule.summary)
         }
+        let scripted = env.rules.applyScripts(to: flow.request)
+        flow.request = scripted.value
+        flow.notes += scripted.notes
 
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .request) else {
             return proceed(context: context, flow: flow, original: request, local: local)
@@ -166,7 +169,10 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
     /// Answers from a Map Local rule, or sends the request upstream.
     private func proceed(context: ChannelHandlerContext, flow: Flow, original: HTTPRequestRecord, local: MapLocalRule?) {
         guard let local else { return send(context: context, flow: flow, original: original) }
-        let response = local.makeResponse()
+        var flow = flow
+        let scripted = env.rules.applyScripts(to: local.makeResponse(), for: flow.request)
+        flow.notes += scripted.notes
+        let response = scripted.value
         let client = context.channel, env = self.env
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .response) else {
             return Self.finish(flow, with: response, client: client, store: env.store)
@@ -221,7 +227,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         if !request.body.isEmpty || ["POST", "PUT", "PATCH"].contains(request.method.uppercased()) {
             headers.add(name: "Content-Length", value: String(request.body.count))
         }
-        if env.rules.breakpointHandler(request: request, phase: .response) != nil {
+        if env.rules.breakpointHandler(request: request, phase: .response) != nil || env.rules.hasScripts(for: request) {
             headers.replaceOrAdd(name: "Accept-Encoding", value: "identity")   // keep the held body editable
         }
         let authority = url.port.map { "\(host):\($0)" } ?? host
@@ -321,6 +327,9 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     private var flow: Flow
     private let store: FlowStore
     private let pauseHandler: BreakpointHandler?
+    private let rules: TrafficRules
+    /// The response is buffered (not streamed) when a breakpoint or a script needs the whole message.
+    private let holds: Bool
     private var response: HTTPResponseRecord?
     private var body = Data()
     private var upgrading = false
@@ -330,6 +339,8 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
         self.flow = flow
         self.store = environment.store
         self.pauseHandler = environment.rules.breakpointHandler(request: flow.request, phase: .response)
+        self.rules = environment.rules
+        self.holds = pauseHandler != nil || environment.rules.hasScripts(for: flow.request)
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -344,14 +355,14 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
                 context.channel.setOption(ChannelOptions.autoRead, value: false).whenComplete { _ in }
                 return
             }
-            guard pauseHandler == nil else { return }
+            guard !holds else { return }
             var headers = h.headers
             headers.replaceOrAdd(name: "Connection", value: "close")
             client.write(HTTPServerResponsePart.head(HTTPResponseHead(version: .http1_1, status: h.status, headers: headers)), promise: nil)
         case .body(let buf):
             if upgrading { return }
             body.append(contentsOf: buf.readableBytesView)
-            if pauseHandler == nil { client.write(HTTPServerResponsePart.body(.byteBuffer(buf)), promise: nil) }
+            if !holds { client.write(HTTPServerResponsePart.body(.byteBuffer(buf)), promise: nil) }
         case .end:
             if upgrading, let response {
                 flow.response = response
@@ -360,11 +371,18 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
                 return
             }
             response?.body = body
-            if let pauseHandler, let held = response {
-                let request = flow.request, client = self.client
-                Task {
-                    let edited = await pauseHandler.resume(response: held, for: request)
-                    client.eventLoop.execute { self.deliver(edited) }
+            if holds, var held = response {
+                let scripted = rules.applyScripts(to: held, for: flow.request)
+                held = scripted.value
+                flow.notes += scripted.notes
+                if let pauseHandler {
+                    let request = flow.request, client = self.client, held = held
+                    Task {
+                        let edited = await pauseHandler.resume(response: held, for: request)
+                        client.eventLoop.execute { self.deliver(edited) }
+                    }
+                } else {
+                    deliver(held)
                 }
             } else {
                 record(response)

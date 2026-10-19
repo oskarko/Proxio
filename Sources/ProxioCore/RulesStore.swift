@@ -5,10 +5,21 @@ public struct RulesDocument: Codable, Sendable, Equatable {
     public var breakpoints: [Breakpoint] = []
     public var mapLocal: [MapLocalRule] = []
     public var mapRemote: [MapRemoteRule] = []
-    public init(breakpoints: [Breakpoint] = [], mapLocal: [MapLocalRule] = [], mapRemote: [MapRemoteRule] = []) {
+    public var scripts: [ProxioScript] = []
+    public init(breakpoints: [Breakpoint] = [], mapLocal: [MapLocalRule] = [], mapRemote: [MapRemoteRule] = [], scripts: [ProxioScript] = []) {
         self.breakpoints = breakpoints
         self.mapLocal = mapLocal
         self.mapRemote = mapRemote
+        self.scripts = scripts
+    }
+
+    // Files saved before scripting existed have no "scripts" key.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        breakpoints = try c.decodeIfPresent([Breakpoint].self, forKey: .breakpoints) ?? []
+        mapLocal = try c.decodeIfPresent([MapLocalRule].self, forKey: .mapLocal) ?? []
+        mapRemote = try c.decodeIfPresent([MapRemoteRule].self, forKey: .mapRemote) ?? []
+        scripts = try c.decodeIfPresent([ProxioScript].self, forKey: .scripts) ?? []
     }
 }
 

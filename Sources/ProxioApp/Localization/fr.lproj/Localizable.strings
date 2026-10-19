@@ -34,6 +34,7 @@
 "Compare Selected" = "Comparer la sélection";
 "Compose" = "Composer";
 "Compose…" = "Composer…";
+"Console" = "Console";
 "Copy as cURL" = "Copier en cURL";
 "Could not save rules: %@" = "Impossible d’enregistrer les règles : %@";
 "Could not start: %@" = "Démarrage impossible : %@";
@@ -78,11 +79,14 @@
 "Move to Keychain" = "Déplacer dans le trousseau";
 "Name" = "Nom";
 "Neither request has a response" = "Aucune requête n’a de réponse";
+"New script" = "Nouveau script";
 "No Map Local rules" = "Aucune règle Map Local";
 "No Map Remote rules" = "Aucune règle Map Remote";
 "No breakpoints" = "Aucun point d’arrêt";
+"No console output yet" = "Aucune sortie console pour l’instant";
 "No differences" = "Aucune différence";
 "No response yet" = "Pas encore de réponse";
+"No scripts" = "Aucun script";
 "Not recording" = "Enregistrement arrêté";
 "Not trusted" = "Non approuvé";
 "Nothing is installed until you confirm the exact command." = "Rien n’est installé tant que vous n’avez pas confirmé la commande exacte.";
@@ -117,9 +121,12 @@
 "Root certificate" = "Certificat racine";
 "Route %@ traffic through Proxio?" = "Faire passer le trafic de %@ par Proxio ?";
 "SSL proxying" = "Proxy SSL";
+"Scripting…" = "Scripts…";
+"Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Les scripts peuvent modifier en JavaScript les requêtes et réponses correspondantes. Définissez onRequest(request) et/ou onResponse(request, response) et renvoyez l’objet. Gardez les scripts courts : un script qui ne se termine jamais bloque sa requête.";
 "Select a message" = "Sélectionnez un message";
 "Select a request" = "Sélectionnez une requête";
 "Select a rule" = "Sélectionnez une règle";
+"Select a script" = "Sélectionnez un script";
 "Select two requests to compare them" = "Sélectionnez deux requêtes à comparer";
 "Send" = "Envoyer";
 "Send %lld×" = "Envoyer %lld×";

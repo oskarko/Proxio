@@ -32,6 +32,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $model.showMapRules) { MapRulesView(model: model) }
         .sheet(isPresented: $model.showBreakpoints) { BreakpointsView(model: model) }
+        .sheet(isPresented: $model.showScripting) { ScriptingView(model: model) }
         .sheet(item: Binding(get: { model.paused.first }, set: { _ in })) { PausedEditor(message: $0, model: model).id($0.id) }
     }
 }

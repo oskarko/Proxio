@@ -167,8 +167,30 @@ public final class TrafficRules: @unchecked Sendable {
     private var _handler: BreakpointHandler?
     private var _mapLocal: [MapLocalRule] = []
     private var _mapRemote: [MapRemoteRule] = []
+    private var _scripts: [ProxioScript] = []
+    public let scriptEngine = ScriptEngine()
 
     public init() {}
+
+    public var scripts: [ProxioScript] {
+        get { lock.withLock { _scripts } }
+        set { lock.withLock { _scripts = newValue } }
+    }
+
+    /// Whether an enabled script targets this request (its response then has to be held and buffered).
+    public func hasScripts(for request: HTTPRequestRecord) -> Bool {
+        lock.withLock { _scripts.contains { $0.isEnabled && $0.matcher.matches(method: request.method, url: request.url) } }
+    }
+
+    public func applyScripts(to request: HTTPRequestRecord) -> ScriptEngine.Outcome<HTTPRequestRecord> {
+        let list = scripts
+        return list.isEmpty ? .init(value: request, notes: []) : scriptEngine.transform(request, with: list)
+    }
+
+    public func applyScripts(to response: HTTPResponseRecord, for request: HTTPRequestRecord) -> ScriptEngine.Outcome<HTTPResponseRecord> {
+        let list = scripts
+        return list.isEmpty ? .init(value: response, notes: []) : scriptEngine.transform(response, for: request, with: list)
+    }
 
     public var mapLocalRules: [MapLocalRule] {
         get { lock.withLock { _mapLocal } }
