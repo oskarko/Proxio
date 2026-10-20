@@ -27,6 +27,14 @@ final class AppModel {
     var helperState: HelperState = HelperInstaller().state
     var showDiff = false
     var showMobile = false
+    var showNetwork = false
+    /// Name of the chosen preset, or "Custom".
+    var networkChoice = NetworkProfile.none.name { didSet { applyNetwork() } }
+    var customProfile = NetworkProfile(name: "Custom", latencyMs: 200, downKbps: 1_000, upKbps: 500) { didSet { applyNetwork() } }
+    var networkProfile: NetworkProfile {
+        networkChoice == "Custom" ? customProfile : (NetworkProfile.presets.first { $0.name == networkChoice } ?? .none)
+    }
+    private func applyNetwork() { conditions.profile = networkProfile }
     /// Listen on all interfaces so phones on the same network can use the proxy.
     var allowLAN = false
     /// Bumped when the imported schemas change so the inspector re-renders.
@@ -63,6 +71,7 @@ final class AppModel {
     let store = FlowStore()
     private let policy = SSLProxyingPolicy()
     private let rules = TrafficRules()
+    private let conditions = NetworkConditions()
     private let bridge = BreakpointBridge()
     private let rulesStore = RulesStore()
     private var saveTask: Task<Void, Never>?
@@ -163,7 +172,7 @@ final class AppModel {
             ca = interceptHTTPS ? try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration) : nil
             applyRules()
             let host = allowLAN ? "0.0.0.0" : "127.0.0.1"
-            let server = try ProxyServer(store: store, host: host, port: port, ca: ca, sslProxying: policy, rules: rules)
+            let server = try ProxyServer(store: store, host: host, port: port, ca: ca, sslProxying: policy, rules: rules, conditions: conditions)
             port = try await server.start()
             self.server = server
             isRunning = true

@@ -66,3 +66,7 @@ Tools → **Set Up Device…** (⇧⌘I) turns on "Allow devices on this network
 ## Sessions
 
 File → **Save Session…** (⌘S) writes every flow, byte-exact, to a `.proxio` file; **Open Session…** (⌘O) replaces the current capture with it. **Import HAR…** appends flows from any HAR 1.x file (browsers, other proxies, Proxio's own export); HAR bodies are already decoded, so `Content-Encoding` is dropped on import.
+
+## Network conditions
+
+Tools → **Network Conditions…** (⇧⌘T) simulates a slow or dead connection for everything going through the proxy: presets (Edge, Slow/Fast 3G, 4G/LTE, Poor Wi-Fi, Offline) or custom latency and download/upload limits. It paces the client-side bytes in both directions (so it also covers HTTPS tunnels and HTTP/2), applies live without restarting, and is never persisted. A status-bar badge shows when it is active.

@@ -16,6 +16,7 @@ struct ProxyEnvironment {
     let upstreamH2SSLContext: NIOSSLContext
     let pool = UpstreamPool()
     let rules: TrafficRules
+    let conditions: NetworkConditions
 
     /// Starts a flow for `request` and applies Map Local / Map Remote and scripts.
     func prepare(_ request: HTTPRequestRecord, startedAt: Date) -> (flow: Flow, local: MapLocalRule?) {

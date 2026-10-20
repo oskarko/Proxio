@@ -25,6 +25,7 @@ struct ContentView: View {
         .toolbar { MainToolbar(model: model) }
         .safeAreaInset(edge: .bottom) { StatusBar(model: model) }
         .sheet(isPresented: $model.showSetup) { SetupView(model: model) }
+        .sheet(isPresented: $model.showNetwork) { NetworkConditionsView(model: model) }
         .sheet(isPresented: $model.showMobile) { MobileSetupView(model: model) }
         .sheet(isPresented: Binding(get: { model.composeDraft != nil }, set: { if !$0 { model.composeDraft = nil } })) {
             ComposeView(model: model)
@@ -234,6 +235,9 @@ private struct StatusBar: View {
             Circle().fill(model.isRunning ? Color.proxioAccent : .secondary).frame(width: 8, height: 8)
             Text(model.status).font(.caption).foregroundStyle(.secondary)
             Spacer()
+            if !model.networkProfile.isTransparent {
+                Label(LocalizedStringKey(model.networkProfile.name), systemImage: "gauge.with.dots.needle.33percent").font(.caption).foregroundStyle(.orange)
+            }
             if model.systemProxyOn { Label("System proxy on", systemImage: "network").font(.caption).foregroundStyle(.secondary) }
             if model.caTrusted { Label("Certificate trusted", systemImage: "checkmark.seal").font(.caption).foregroundStyle(.secondary) }
         }

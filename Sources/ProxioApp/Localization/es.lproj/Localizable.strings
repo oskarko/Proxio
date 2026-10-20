@@ -8,8 +8,10 @@
 3. Ajustes → General → Información → Ajustes de confianza de certificados → confía en «Proxio Root CA».";
 "127.0.0.1:%lld" = "127.0.0.1:%lld";
 "2 requests selected" = "2 peticiones seleccionadas";
+"4G / LTE" = "4G / LTE";
 "Add" = "Añadir";
 "Add Breakpoint for %@" = "Añadir punto de interrupción para %@";
+"Added latency (ms, round trip)" = "Latencia añadida (ms, ida y vuelta)";
 "All" = "Todo";
 "All Traffic" = "Todo el tráfico";
 "Allow devices on this network" = "Permitir dispositivos de esta red";
@@ -47,10 +49,14 @@
 "Could not parse: %@" = "No se pudo analizar: %@";
 "Could not save rules: %@" = "No se pudieron guardar las reglas: %@";
 "Could not start: %@" = "No se pudo iniciar: %@";
+"Custom" = "Personalizado";
 "Data" = "Datos";
 "Different" = "Diferentes";
 "Domains" = "Dominios";
 "Done" = "Hecho";
+"Download" = "Bajada";
+"Download limit (kbit/s, 0 = unlimited)" = "Límite de bajada (kbit/s, 0 = sin límite)";
+"Edge" = "Edge";
 "Edit and Repeat…" = "Editar y repetir…";
 "Empty body" = "Cuerpo vacío";
 "Enable" = "Activar";
@@ -60,6 +66,7 @@
 "Execute" = "Ejecutar";
 "Export as HAR…" = "Exportar como HAR…";
 "Export failed: %@" = "Error al exportar: %@";
+"Fast 3G" = "3G rápida";
 "File" = "Archivo";
 "Filter by URL, method, status or type" = "Filtrar por URL, método, estado o tipo";
 "HTTPS" = "HTTPS";
@@ -82,6 +89,7 @@
 "Intercept HTTPS" = "Interceptar HTTPS";
 "Intercept HTTPS (decrypt traffic)" = "Interceptar HTTPS (descifrar tráfico)";
 "It will no longer be trusted and will be deleted from your login keychain." = "Dejará de ser de confianza y se eliminará de tu llavero de inicio de sesión.";
+"Latency" = "Latencia";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Permite a Proxio cambiar el proxy del sistema sin pedir tu contraseña cada vez. Solo puede establecer 127.0.0.1 y restaurar el ajuste anterior.";
 "Listening on %@:%lld" = "Escuchando en %@:%lld";
 "Loaded %@ flows" = "%@ flujos cargados";
@@ -97,10 +105,13 @@
 "Name" = "Nombre";
 "Neither request has a response" = "Ninguna petición tiene respuesta";
 "Network" = "Red";
+"Network Conditions…" = "Condiciones de red…";
 "New script" = "Nuevo script";
 "No Map Local rules" = "Sin reglas Map Local";
 "No Map Remote rules" = "Sin reglas Map Remote";
+"No Throttling" = "Sin limitación";
 "No breakpoints" = "Sin puntos de interrupción";
+"No connections are accepted." = "No se acepta ninguna conexión.";
 "No console output yet" = "Aún no hay salida de consola";
 "No differences" = "Sin diferencias";
 "No network address found." = "No se encontró ninguna dirección de red.";
@@ -109,6 +120,7 @@
 "Not recording" = "Sin grabar";
 "Not trusted" = "Sin confianza";
 "Nothing is installed until you confirm the exact command." = "No se instala nada hasta que confirmes el comando exacto.";
+"Offline" = "Sin conexión";
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Un patrón por línea: host, *.host o host:puerto. Las exclusiones tienen prioridad. Sin inclusiones se intercepta cualquier host.";
 "Only changes" = "Solo cambios";
 "Open Login Items…" = "Abrir Ítems de inicio…";
@@ -116,11 +128,13 @@
 "Path" = "Ruta";
 "Ping" = "Ping";
 "Pong" = "Pong";
+"Poor Wi-Fi" = "Wi-Fi débil";
 "Port" = "Puerto";
 "Pretty" = "Formateado";
 "Privileged helper active" = "Asistente privilegiado activo";
 "Privileged helper: not installed" = "Asistente privilegiado: no instalado";
 "Privileged helper: waiting for approval" = "Asistente privilegiado: esperando aprobación";
+"Profile" = "Perfil";
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio encontró su clave privada de CA como archivo de texto plano (ca-key.pem). Puede guardarse en tu llavero de inicio de sesión; después el archivo se sobrescribe y se elimina.";
 "Proxio on GitHub" = "Proxio en GitHub";
@@ -167,6 +181,8 @@
 "Simulators" = "Simuladores";
 "Simulators use this Mac’s proxy settings: turn on “Use as system proxy”, then install the certificate in the running simulators." = "Los simuladores usan el proxy de este Mac: activa «Usar como proxy del sistema» e instala el certificado en los simuladores en ejecución.";
 "Size" = "Tamaño";
+"Slow 3G" = "3G lenta";
+"Slows down or cuts off everything that goes through Proxio, in both directions, without restarting. It applies to new data immediately." = "Ralentiza o corta todo lo que pasa por Proxio, en ambos sentidos, sin reiniciar. Se aplica de inmediato a los datos nuevos.";
 "Start" = "Iniciar";
 "Start Recording" = "Iniciar grabación";
 "Start line" = "Línea inicial";
@@ -195,6 +211,8 @@
 "Type" = "Tipo";
 "URL" = "URL";
 "URL pattern" = "Patrón de URL";
+"Upload" = "Subida";
+"Upload limit (kbit/s, 0 = unlimited)" = "Límite de subida (kbit/s, 0 = sin límite)";
 "Use as System Proxy" = "Usar como proxy del sistema";
 "Use as system proxy" = "Usar como proxy del sistema";
 "Value" = "Valor";

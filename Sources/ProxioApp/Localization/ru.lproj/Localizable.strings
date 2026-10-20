@@ -8,8 +8,10 @@
 3. Настройки → Основные → Об этом устройстве → Доверие сертификатам → доверьте «Proxio Root CA».";
 "127.0.0.1:%lld" = "127.0.0.1:%lld";
 "2 requests selected" = "Выбрано 2 запроса";
+"4G / LTE" = "4G / LTE";
 "Add" = "Добавить";
 "Add Breakpoint for %@" = "Добавить точку останова для %@";
+"Added latency (ms, round trip)" = "Добавленная задержка (мс, туда и обратно)";
 "All" = "Все";
 "All Traffic" = "Весь трафик";
 "Allow devices on this network" = "Разрешить устройства из этой сети";
@@ -47,10 +49,14 @@
 "Could not parse: %@" = "Не удалось разобрать: %@";
 "Could not save rules: %@" = "Не удалось сохранить правила: %@";
 "Could not start: %@" = "Не удалось запустить: %@";
+"Custom" = "Свой";
 "Data" = "Данные";
 "Different" = "Различаются";
 "Domains" = "Домены";
 "Done" = "Готово";
+"Download" = "Загрузка";
+"Download limit (kbit/s, 0 = unlimited)" = "Лимит загрузки (кбит/с, 0 = без лимита)";
+"Edge" = "Edge";
 "Edit and Repeat…" = "Изменить и повторить…";
 "Empty body" = "Пустое тело";
 "Enable" = "Включить";
@@ -60,6 +66,7 @@
 "Execute" = "Выполнить";
 "Export as HAR…" = "Экспортировать как HAR…";
 "Export failed: %@" = "Ошибка экспорта: %@";
+"Fast 3G" = "Быстрый 3G";
 "File" = "Файл";
 "Filter by URL, method, status or type" = "Фильтр по URL, методу, статусу или типу";
 "HTTPS" = "HTTPS";
@@ -82,6 +89,7 @@
 "Intercept HTTPS" = "Перехватывать HTTPS";
 "Intercept HTTPS (decrypt traffic)" = "Перехватывать HTTPS (расшифровка трафика)";
 "It will no longer be trusted and will be deleted from your login keychain." = "Он перестанет быть доверенным и будет удалён из вашей связки ключей входа.";
+"Latency" = "Задержка";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Позволяет Proxio менять системный прокси без запроса пароля каждый раз. Он умеет только устанавливать 127.0.0.1 и восстанавливать прежнюю настройку.";
 "Listening on %@:%lld" = "Прослушивание на %@:%lld";
 "Loaded %@ flows" = "Загружено потоков: %@";
@@ -97,10 +105,13 @@
 "Name" = "Имя";
 "Neither request has a response" = "Ни у одного запроса нет ответа";
 "Network" = "Сеть";
+"Network Conditions…" = "Условия сети…";
 "New script" = "Новый скрипт";
 "No Map Local rules" = "Нет правил Map Local";
 "No Map Remote rules" = "Нет правил Map Remote";
+"No Throttling" = "Без ограничений";
 "No breakpoints" = "Нет точек останова";
+"No connections are accepted." = "Соединения не принимаются.";
 "No console output yet" = "Вывода консоли пока нет";
 "No differences" = "Различий нет";
 "No network address found." = "Сетевой адрес не найден.";
@@ -109,6 +120,7 @@
 "Not recording" = "Запись остановлена";
 "Not trusted" = "Не доверенный";
 "Nothing is installed until you confirm the exact command." = "Ничего не устанавливается, пока вы не подтвердите точную команду.";
+"Offline" = "Нет соединения";
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Один шаблон в строке: host, *.host или host:порт. Исключения имеют приоритет. Без включений перехватываются все хосты.";
 "Only changes" = "Только изменения";
 "Open Login Items…" = "Открыть объекты входа…";
@@ -116,11 +128,13 @@
 "Path" = "Путь";
 "Ping" = "Ping";
 "Pong" = "Pong";
+"Poor Wi-Fi" = "Слабый Wi-Fi";
 "Port" = "Порт";
 "Pretty" = "Форматированный";
 "Privileged helper active" = "Привилегированный помощник активен";
 "Privileged helper: not installed" = "Привилегированный помощник: не установлен";
 "Privileged helper: waiting for approval" = "Привилегированный помощник: ожидает одобрения";
+"Profile" = "Профиль";
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio обнаружил закрытый ключ ЦС в виде обычного файла (ca-key.pem). Его можно хранить в связке ключей входа; после этого файл перезаписывается и удаляется.";
 "Proxio on GitHub" = "Proxio на GitHub";
@@ -167,6 +181,8 @@
 "Simulators" = "Симуляторы";
 "Simulators use this Mac’s proxy settings: turn on “Use as system proxy”, then install the certificate in the running simulators." = "Симуляторы используют прокси этого Mac: включите «Использовать как системный прокси», затем установите сертификат в запущенные симуляторы.";
 "Size" = "Размер";
+"Slow 3G" = "Медленный 3G";
+"Slows down or cuts off everything that goes through Proxio, in both directions, without restarting. It applies to new data immediately." = "Замедляет или полностью прерывает весь трафик через Proxio в обоих направлениях, без перезапуска. Применяется сразу к новым данным.";
 "Start" = "Запустить";
 "Start Recording" = "Начать запись";
 "Start line" = "Начальная строка";
@@ -195,6 +211,8 @@
 "Type" = "Тип";
 "URL" = "URL";
 "URL pattern" = "Шаблон URL";
+"Upload" = "Отдача";
+"Upload limit (kbit/s, 0 = unlimited)" = "Лимит отдачи (кбит/с, 0 = без лимита)";
 "Use as System Proxy" = "Использовать как системный прокси";
 "Use as system proxy" = "Использовать как системный прокси";
 "Value" = "Значение";

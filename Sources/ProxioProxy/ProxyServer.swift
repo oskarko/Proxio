@@ -27,13 +27,14 @@ public final class ProxyServer: @unchecked Sendable {
         upstreamTLS: TLSConfiguration? = nil,
         sslProxying: SSLProxyingPolicy = SSLProxyingPolicy(),
         rules: TrafficRules = TrafficRules(),
+        conditions: NetworkConditions = NetworkConditions(),
         threads: Int = System.coreCount
     ) throws {
         var tls = upstreamTLS ?? TLSConfiguration.makeClientConfiguration()
         tls.applicationProtocols = ["http/1.1"]
         let http1 = try NIOSSLContext(configuration: tls)
         tls.applicationProtocols = ["h2", "http/1.1"]
-        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: http1, upstreamH2SSLContext: try NIOSSLContext(configuration: tls), rules: rules)
+        self.environment = ProxyEnvironment(store: store, ca: ca, sslProxying: sslProxying, upstreamSSLContext: http1, upstreamH2SSLContext: try NIOSSLContext(configuration: tls), rules: rules, conditions: conditions)
         self.host = host
         self.requestedPort = port
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: max(1, threads))
@@ -53,6 +54,7 @@ public final class ProxyServer: @unchecked Sendable {
                     return channel.close()
                 }
                 return channel.pipeline.addHandlers([
+                    ThrottleHandler(conditions: environment.conditions),
                     ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)),
                     HTTPResponseEncoder(),
                     HTTPServerPipelineHandler(),
