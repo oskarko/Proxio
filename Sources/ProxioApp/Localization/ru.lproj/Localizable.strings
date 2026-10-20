@@ -43,6 +43,7 @@
 "Console" = "Консоль";
 "Copy as cURL" = "Копировать как cURL";
 "Could not install in simulators: %@" = "Не удалось установить в симуляторы: %@";
+"Could not open: %@" = "Не удалось открыть: %@";
 "Could not parse: %@" = "Не удалось разобрать: %@";
 "Could not save rules: %@" = "Не удалось сохранить правила: %@";
 "Could not start: %@" = "Не удалось запустить: %@";
@@ -70,6 +71,7 @@
 "Hex" = "Hex";
 "Identical" = "Идентичны";
 "Import .proto Files…" = "Импортировать файлы .proto…";
+"Import HAR…" = "Импортировать HAR…";
 "Imported .proto files" = "Файлы .proto импортированы";
 "Include…" = "Включить…";
 "Inline" = "Встроенный";
@@ -82,6 +84,7 @@
 "It will no longer be trusted and will be deleted from your login keychain." = "Он перестанет быть доверенным и будет удалён из вашей связки ключей входа.";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Позволяет Proxio менять системный прокси без запроса пароля каждый раз. Он умеет только устанавливать 127.0.0.1 и восстанавливать прежнюю настройку.";
 "Listening on %@:%lld" = "Прослушивание на %@:%lld";
+"Loaded %@ flows" = "Загружено потоков: %@";
 "Map Local" = "Map Local";
 "Map Local / Remote" = "Map Local / Remote";
 "Map Local / Remote…" = "Map Local / Remote…";
@@ -109,6 +112,7 @@
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Один шаблон в строке: host, *.host или host:порт. Исключения имеют приоритет. Без включений перехватываются все хосты.";
 "Only changes" = "Только изменения";
 "Open Login Items…" = "Открыть объекты входа…";
+"Open Session…" = "Открыть сессию…";
 "Path" = "Путь";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -143,6 +147,7 @@
 "Root certificate" = "Корневой сертификат";
 "Route %@ traffic through Proxio?" = "Направлять трафик %@ через Proxio?";
 "SSL proxying" = "SSL-проксирование";
+"Save Session…" = "Сохранить сессию…";
 "Scan with the phone camera" = "Отсканируйте камерой телефона";
 "Scripting…" = "Скрипты…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Скрипты на JavaScript могут изменять подходящие запросы и ответы. Определите onRequest(request) и/или onResponse(request, response) и верните объект. Пишите короткие скрипты: скрипт, который не завершается, блокирует свой запрос.";
@@ -154,6 +159,7 @@
 "Send" = "Отправить";
 "Send %lld×" = "Отправить %lld×";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Перенаправляет подходящие запросы на другую схему, хост, порт или путь. Пустые поля сохраняют исходное значение.";
+"Session saved" = "Сессия сохранена";
 "Set Up Device…" = "Настроить устройство…";
 "Settings" = "Настройки";
 "Settings…" = "Настройки…";

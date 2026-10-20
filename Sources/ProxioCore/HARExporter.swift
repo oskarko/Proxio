@@ -12,8 +12,11 @@ public enum HARExporter {
 
         let entries: [[String: Any]] = flows.map { f in
             let res = f.response
-            let bodyText = res.flatMap { String(data: $0.decodedBody, encoding: .utf8) } ?? ""
-            return [
+            let decoded = res?.decodedBody ?? Data()
+            let bodyText = String(data: decoded, encoding: .utf8)
+            var content: [String: Any] = ["size": decoded.count, "mimeType": res?.mimeType ?? "", "text": bodyText ?? decoded.base64EncodedString()]
+            if bodyText == nil { content["encoding"] = "base64" }
+            var entry: [String: Any] = [
                 "startedDateTime": iso.string(from: f.startedAt),
                 "time": f.duration * 1000,
                 "request": [
@@ -33,14 +36,20 @@ public enum HARExporter {
                     "httpVersion": res?.httpVersion ?? "HTTP/1.1",
                     "headers": headers(res?.headers ?? []),
                     "cookies": [] as [Any],
-                    "content": ["size": res?.decodedBody.count ?? 0, "mimeType": res?.mimeType ?? "", "text": bodyText] as [String: Any],
+                    "content": content,
                     "redirectURL": "",
                     "headersSize": -1,
                     "bodySize": res?.body.count ?? 0,
                 ] as [String: Any],
                 "cache": [String: Any](),
                 "timings": ["send": 0, "wait": f.duration * 1000, "receive": 0],
-            ].merging(f.messages.isEmpty ? [:] : ["_webSocketMessages": f.messages.map { m -> [String: Any] in
+            ]
+            if !f.request.body.isEmpty, var req = entry["request"] as? [String: Any] {
+                let mime = f.request.headers.first { $0.name.caseInsensitiveCompare("Content-Type") == .orderedSame }?.value ?? ""
+                req["postData"] = ["mimeType": mime, "text": String(decoding: f.request.decodedBody, as: UTF8.self)] as [String: Any]
+                entry["request"] = req
+            }
+            return entry.merging(f.messages.isEmpty ? [:] : ["_webSocketMessages": f.messages.map { m -> [String: Any] in
                 [
                     "type": m.direction == .sent ? "send" : "receive",
                     "time": m.timestamp.timeIntervalSince1970,

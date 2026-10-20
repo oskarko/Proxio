@@ -24,6 +24,12 @@ struct ProxioApp: App {
                 Button("Settings…") { model.showSetup = true }.keyboardShortcut(",")
             }
             CommandGroup(after: .importExport) {
+                Button("Save Session…") { model.saveSession() }
+                    .keyboardShortcut("s")
+                    .disabled(model.flows.isEmpty)
+                Button("Open Session…") { model.openSession() }.keyboardShortcut("o")
+                Button("Import HAR…") { model.importHAR() }
+                Divider()
                 Button("Export as HAR…") { model.exportHAR() }
                     .keyboardShortcut("e", modifiers: [.command, .shift])
                     .disabled(model.flows.isEmpty)

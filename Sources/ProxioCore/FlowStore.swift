@@ -21,6 +21,11 @@ public actor FlowStore {
         notify()
     }
 
+    /// Replaces the whole capture (opening a session).
+    public func replace(with newFlows: [Flow]) { flows = newFlows; notify() }
+
+    public func add(contentsOf newFlows: [Flow]) { flows.append(contentsOf: newFlows); notify() }
+
     public func all() -> [Flow] { flows }
 
     public func clear() { flows.removeAll(); notify() }

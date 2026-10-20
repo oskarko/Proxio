@@ -43,6 +43,7 @@
 "Console" = "Consola";
 "Copy as cURL" = "Copiar como cURL";
 "Could not install in simulators: %@" = "No se pudo instalar en simuladores: %@";
+"Could not open: %@" = "No se pudo abrir: %@";
 "Could not parse: %@" = "No se pudo analizar: %@";
 "Could not save rules: %@" = "No se pudieron guardar las reglas: %@";
 "Could not start: %@" = "No se pudo iniciar: %@";
@@ -70,6 +71,7 @@
 "Hex" = "Hex";
 "Identical" = "Idénticas";
 "Import .proto Files…" = "Importar archivos .proto…";
+"Import HAR…" = "Importar HAR…";
 "Imported .proto files" = "Archivos .proto importados";
 "Include…" = "Incluir…";
 "Inline" = "En línea";
@@ -82,6 +84,7 @@
 "It will no longer be trusted and will be deleted from your login keychain." = "Dejará de ser de confianza y se eliminará de tu llavero de inicio de sesión.";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Permite a Proxio cambiar el proxy del sistema sin pedir tu contraseña cada vez. Solo puede establecer 127.0.0.1 y restaurar el ajuste anterior.";
 "Listening on %@:%lld" = "Escuchando en %@:%lld";
+"Loaded %@ flows" = "%@ flujos cargados";
 "Map Local" = "Map Local";
 "Map Local / Remote" = "Map Local / Remote";
 "Map Local / Remote…" = "Map Local / Remote…";
@@ -109,6 +112,7 @@
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Un patrón por línea: host, *.host o host:puerto. Las exclusiones tienen prioridad. Sin inclusiones se intercepta cualquier host.";
 "Only changes" = "Solo cambios";
 "Open Login Items…" = "Abrir Ítems de inicio…";
+"Open Session…" = "Abrir sesión…";
 "Path" = "Ruta";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -143,6 +147,7 @@
 "Root certificate" = "Certificado raíz";
 "Route %@ traffic through Proxio?" = "¿Dirigir el tráfico de %@ por Proxio?";
 "SSL proxying" = "Proxy SSL";
+"Save Session…" = "Guardar sesión…";
 "Scan with the phone camera" = "Escanea con la cámara del móvil";
 "Scripting…" = "Scripts…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.";
@@ -154,6 +159,7 @@
 "Send" = "Enviar";
 "Send %lld×" = "Enviar %lld×";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Envía las peticiones coincidentes a otro esquema, host, puerto o ruta. Los campos vacíos conservan el original.";
+"Session saved" = "Sesión guardada";
 "Set Up Device…" = "Configurar dispositivo…";
 "Settings" = "Ajustes";
 "Settings…" = "Ajustes…";

@@ -41,6 +41,7 @@
 "Console" = "Console";
 "Copy as cURL" = "Copy as cURL";
 "Could not install in simulators: %@" = "Could not install in simulators: %@";
+"Could not open: %@" = "Could not open: %@";
 "Could not parse: %@" = "Could not parse: %@";
 "Could not save rules: %@" = "Could not save rules: %@";
 "Could not start: %@" = "Could not start: %@";
@@ -68,6 +69,7 @@
 "Hex" = "Hex";
 "Identical" = "Identical";
 "Import .proto Files…" = "Import .proto Files…";
+"Import HAR…" = "Import HAR…";
 "Imported .proto files" = "Imported .proto files";
 "Include…" = "Include…";
 "Inline" = "Inline";
@@ -80,6 +82,7 @@
 "It will no longer be trusted and will be deleted from your login keychain." = "It will no longer be trusted and will be deleted from your login keychain.";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting.";
 "Listening on %@:%lld" = "Listening on %@:%lld";
+"Loaded %@ flows" = "Loaded %@ flows";
 "Map Local" = "Map Local";
 "Map Local / Remote" = "Map Local / Remote";
 "Map Local / Remote…" = "Map Local / Remote…";
@@ -107,6 +110,7 @@
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted.";
 "Only changes" = "Only changes";
 "Open Login Items…" = "Open Login Items…";
+"Open Session…" = "Open Session…";
 "Path" = "Path";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -141,6 +145,7 @@
 "Root certificate" = "Root certificate";
 "Route %@ traffic through Proxio?" = "Route %@ traffic through Proxio?";
 "SSL proxying" = "SSL proxying";
+"Save Session…" = "Save Session…";
 "Scan with the phone camera" = "Scan with the phone camera";
 "Scripting…" = "Scripting…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request.";
@@ -152,6 +157,7 @@
 "Send" = "Send";
 "Send %lld×" = "Send %lld×";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Send matching requests to a different scheme, host, port or path. Empty fields keep the original.";
+"Session saved" = "Session saved";
 "Set Up Device…" = "Set Up Device…";
 "Settings" = "Settings";
 "Settings…" = "Settings…";

@@ -212,6 +212,44 @@ final class AppModel {
         catch { status = String(localized: "Export failed: \(error.localizedDescription)") }
     }
 
+    // MARK: Sessions
+
+    func saveSession() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "capture.\(Session.fileExtension)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let snapshot = flows
+        do {
+            try Session(flows: snapshot).encoded().write(to: url, options: .atomic)
+            status = String(localized: "Session saved")
+        } catch { status = String(localized: "Export failed: \(error.localizedDescription)") }
+    }
+
+    func openSession() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: Session.fileExtension) ?? .data]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        load(url, replacing: true)
+    }
+
+    func importHAR() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "har") ?? .json]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        load(url, replacing: false)
+    }
+
+    private func load(_ url: URL, replacing: Bool) {
+        do {
+            let data = try Data(contentsOf: url)
+            let loaded = replacing ? try Session.decode(data).flows : try HARImporter.flows(from: data)
+            Task {
+                if replacing { await store.replace(with: loaded) } else { await store.add(contentsOf: loaded) }
+                status = String(localized: "Loaded \(String(loaded.count)) flows")
+            }
+        } catch { status = String(localized: "Could not open: \(error.localizedDescription)") }
+    }
+
     /// `simctl keychain booted add-root-cert`: the simulators' trust store, not the Mac's.
     func installCAInSimulators() async {
         let pem = caURL.path
