@@ -3,7 +3,7 @@ import Security
 
 /// Keeps the external proxy password in the login Keychain instead of the rules file.
 enum ProxyPasswordStore {
-    private static let service = "com.dinoroco.proxio.external-proxy"
+    private static let service = "dev.proxio.external-proxy"
 
     private static func query(_ account: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]

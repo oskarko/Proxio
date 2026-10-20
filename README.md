@@ -92,3 +92,6 @@ Tools → **Block, Allow, DNS & Bypass…** (⇧⌘L), all persisted with the ot
 - **Bypass**: HTTPS tunnels to these hosts are relayed untouched and not recorded (certificate-pinned apps). This is an in-proxy list, not the macOS system bypass setting.
 
 URL patterns without a port match the host on any port.
+
+## Releasing
+`scripts/release.sh` builds `build/Proxio-<version>.dmg` (app + Applications link). With `PROXIO_SIGN_IDENTITY` set to a *Developer ID Application* identity it signs with the hardened runtime and a secure timestamp, and with `PROXIO_NOTARY_PROFILE` (created by `xcrun notarytool store-credentials`) it notarizes and staples the DMG. Without them you get an ad-hoc signed DMG. Automatic updates (Sparkle) are not included: they need an update-signing key and a hosted appcast, which are yours to own.
