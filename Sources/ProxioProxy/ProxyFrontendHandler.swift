@@ -18,6 +18,13 @@ struct ProxyEnvironment {
     let rules: TrafficRules
     let conditions: NetworkConditions
 
+    /// The 403 answer for a request the Block / Allow lists refuse, with the reason noted on the flow.
+    func blockedResponse(_ reason: String) -> HTTPResponseRecord {
+        HTTPResponseRecord(status: 403, reason: "Forbidden",
+                           headers: [HTTPHeader(name: "Content-Type", value: "text/plain; charset=utf-8")],
+                           body: Data("\(reason) by Proxio".utf8))
+    }
+
     /// Starts a flow for `request` and applies Map Local / Map Remote and scripts.
     func prepare(_ request: HTTPRequestRecord, startedAt: Date) -> (flow: Flow, local: MapLocalRule?) {
         var flow = Flow(startedAt: startedAt, request: request)
@@ -76,15 +83,27 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         guard let (host, port) = Self.hostPort(from: head.uri, defaultPort: 443) else {
             return fail(context: context, status: .badRequest)
         }
-        if let ca = env.ca, env.sslProxying.rules.shouldIntercept(host: host, port: port),
+        let bypassed = env.rules.isBypassed(host: host, port: port)
+        if !bypassed, let ca = env.ca, env.sslProxying.rules.shouldIntercept(host: host, port: port),
            let sslContext = try? ca.serverContext(for: host) {
             return intercept(context: context, host: host, port: port, sslContext: sslContext)
+        }
+        if !bypassed, let reason = env.rules.blockReason(forTunnelTo: host, port: port) {
+            let record = Flow(
+                startedAt: startedAt,
+                request: HTTPRequestRecord(method: "CONNECT", url: URL(string: "https://\(host):\(port)")!),
+                response: env.blockedResponse(reason), notes: [reason]
+            )
+            let store = env.store
+            Task { await store.add(record) }
+            return fail(context: context, status: .forbidden)
         }
         let client = context.channel
         let store = env.store
         let started = startedAt
+        let bypass = bypassed
         ClientBootstrap(group: context.eventLoop)
-            .connect(host: host, port: port)
+            .connect(host: env.rules.dnsOverride(for: host) ?? host, port: port)
             .whenComplete { result in
                 switch result {
                 case .failure:
@@ -96,7 +115,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                         request: HTTPRequestRecord(method: "CONNECT", url: URL(string: "https://\(host):\(port)")!),
                         response: HTTPResponseRecord(status: 200, reason: "Connection Established")
                     )
-                    Task { await store.add(record) }
+                    if !bypass { Task { await store.add(record) } }
 
                     // A 2xx CONNECT reply has no body framing, so it is written raw,
                     // after the HTTP codec is gone and the relays are in place.
@@ -179,7 +198,11 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
             headers: head.headers.map { HTTPHeader(name: $0.name, value: $0.value) },
             body: body
         )
-        let (flow, local) = env.prepare(request, startedAt: startedAt)
+        var (flow, local) = env.prepare(request, startedAt: startedAt)
+        if let reason = env.rules.blockReason(for: flow.request) {
+            flow.notes.append(reason)
+            return Self.finish(flow, with: env.blockedResponse(reason), client: context.channel, store: env.store, keepAlive: keepAlive)
+        }
 
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .request) else {
             return proceed(context: context, flow: flow, original: request, local: local)
@@ -297,7 +320,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
                     return ch.eventLoop.makeFailedFuture(error)
                 }
             }
-            .connect(host: host, port: port)
+            .connect(host: env.rules.dnsOverride(for: host) ?? host, port: port)
             .whenComplete { result in
                 switch result {
                 case .failure:

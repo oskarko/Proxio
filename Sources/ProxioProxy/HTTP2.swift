@@ -124,7 +124,7 @@ enum UpstreamConnection {
             request.headers.append(HTTPHeader(name: "Accept-Encoding", value: "identity"))
         }
         let target = Target(request: request, host: host, port: port, tls: useTLS, path: path, authority: hostHeader ?? authority,
-                            connectHost: host, key: .init(host: host, port: port, tls: useTLS, loop: ObjectIdentifier(loop)))
+                            connectHost: env.rules.dnsOverride(for: host) ?? host, key: .init(host: host, port: port, tls: useTLS, loop: ObjectIdentifier(loop)))
         attempt(target, env: env, loop: loop, delegate: delegate, allowReuse: true)
     }
 
@@ -174,7 +174,7 @@ enum UpstreamConnection {
                     }
                 }
             }
-            .connect(host: t.host, port: t.port)
+            .connect(host: t.connectHost, port: t.port)
             .whenComplete { result in
                 switch result {
                 case .failure(let error): delegate.upstreamFailed(error)
@@ -485,6 +485,10 @@ final class HTTP2Exchange: UpstreamDelegate {
     func start(_ request: HTTPRequestRecord) {
         let (prepared, local) = env.prepare(request, startedAt: startedAt)
         flow = prepared
+        if let reason = env.rules.blockReason(for: flow.request) {
+            flow.notes.append(reason)
+            return finish(env.blockedResponse(reason))
+        }
         guard let handler = env.rules.breakpointHandler(request: flow.request, phase: .request) else {
             return proceed(local: local)
         }

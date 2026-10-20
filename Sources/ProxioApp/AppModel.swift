@@ -61,6 +61,11 @@ final class AppModel {
     var mapLocalRules: [MapLocalRule] = [] { didSet { rules.mapLocalRules = mapLocalRules; scheduleSave() } }
     var mapRemoteRules: [MapRemoteRule] = [] { didSet { rules.mapRemoteRules = mapRemoteRules; scheduleSave() } }
     var scripts: [ProxioScript] = [] { didSet { rules.scripts = scripts; scheduleSave() } }
+    var blockList: [AccessRule] = [] { didSet { rules.blockRules = blockList; scheduleSave() } }
+    var allowList: [AccessRule] = [] { didSet { rules.allowRules = allowList; scheduleSave() } }
+    var dnsRules: [DNSRule] = [] { didSet { rules.dnsRules = dnsRules; scheduleSave() } }
+    var bypassRules: [BypassRule] = [] { didSet { rules.bypassRules = bypassRules; scheduleSave() } }
+    var showAccess = false
     /// Recent `console.log` output from scripts, newest last.
     var scriptLog: [String] = []
 
@@ -90,11 +95,19 @@ final class AppModel {
         mapLocalRules = saved.mapLocal
         mapRemoteRules = saved.mapRemote
         scripts = saved.scripts
+        blockList = saved.blockList
+        allowList = saved.allowList
+        dnsRules = saved.dns
+        bypassRules = saved.bypass
         // didSet observers do not run inside init, so hand the loaded rules to the proxy explicitly.
         rules.breakpoints = saved.breakpoints
         rules.mapLocalRules = saved.mapLocal
         rules.mapRemoteRules = saved.mapRemote
         rules.scripts = saved.scripts
+        rules.blockRules = saved.blockList
+        rules.allowRules = saved.allowList
+        rules.dnsRules = saved.dns
+        rules.bypassRules = saved.bypass
         rules.scriptEngine.onLog = { [weak self] name, text in
             Task { @MainActor in
                 guard let self else { return }
@@ -114,7 +127,7 @@ final class AppModel {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard !Task.isCancelled, let self else { return }
             do {
-                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules, scripts: scripts))
+                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules, scripts: scripts, blockList: blockList, allowList: allowList, dns: dnsRules, bypass: bypassRules))
             } catch { status = String(localized: "Could not save rules: \(error.localizedDescription)") }
         }
     }

@@ -42,6 +42,7 @@ struct ProxioApp: App {
                 Button("Breakpoints…") { model.showBreakpoints = true }.keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Map Local / Remote…") { model.showMapRules = true }.keyboardShortcut("m", modifiers: [.command, .shift])
                 Button("Scripting…") { model.showScripting = true }.keyboardShortcut("j", modifiers: [.command, .shift])
+                Button("Block, Allow, DNS & Bypass…") { model.showAccess = true }.keyboardShortcut("l", modifiers: [.command, .shift])
                 Button("Network Conditions…") { model.showNetwork = true }.keyboardShortcut("t", modifiers: [.command, .shift])
                 Button("Set Up Device…") { model.showMobile = true }.keyboardShortcut("i", modifiers: [.command, .shift])
                 Divider()

@@ -22,7 +22,9 @@ public struct RequestMatcher: Sendable, Hashable, Codable {
             target = url.absoluteString
         } else {
             var t = url.host ?? ""
-            if let port = url.port { t += ":\(port)" }
+            // A pattern that names no port matches the host on any port.
+            let patternHost = pattern.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? pattern
+            if let port = url.port, patternHost.contains(":") { t += ":\(port)" }
             t += url.path.isEmpty ? "/" : url.path
             if let q = url.query { t += "?\(q)" }
             target = t
@@ -168,6 +170,10 @@ public final class TrafficRules: @unchecked Sendable {
     private var _mapLocal: [MapLocalRule] = []
     private var _mapRemote: [MapRemoteRule] = []
     private var _scripts: [ProxioScript] = []
+    private var _block: [AccessRule] = []
+    private var _allow: [AccessRule] = []
+    private var _dns: [DNSRule] = []
+    private var _bypass: [BypassRule] = []
     public let scriptEngine = ScriptEngine()
 
     public init() {}
@@ -190,6 +196,56 @@ public final class TrafficRules: @unchecked Sendable {
     public func applyScripts(to response: HTTPResponseRecord, for request: HTTPRequestRecord) -> ScriptEngine.Outcome<HTTPResponseRecord> {
         let list = scripts
         return list.isEmpty ? .init(value: response, notes: []) : scriptEngine.transform(response, for: request, with: list)
+    }
+
+    public var blockRules: [AccessRule] {
+        get { lock.withLock { _block } }
+        set { lock.withLock { _block = newValue } }
+    }
+
+    public var allowRules: [AccessRule] {
+        get { lock.withLock { _allow } }
+        set { lock.withLock { _allow = newValue } }
+    }
+
+    public var dnsRules: [DNSRule] {
+        get { lock.withLock { _dns } }
+        set { lock.withLock { _dns = newValue } }
+    }
+
+    public var bypassRules: [BypassRule] {
+        get { lock.withLock { _bypass } }
+        set { lock.withLock { _bypass = newValue } }
+    }
+
+    /// Why this request must not reach the origin, or nil. Block wins over Allow; an Allow list with
+    /// at least one enabled entry lets nothing else through.
+    public func blockReason(for request: HTTPRequestRecord) -> String? {
+        lock.withLock {
+            if _block.contains(where: { $0.isEnabled && $0.matcher.matches(method: request.method, url: request.url) }) { return "Blocked" }
+            let allow = _allow.filter(\.isEnabled)
+            if !allow.isEmpty, !allow.contains(where: { $0.matcher.matches(method: request.method, url: request.url) }) { return "Not in Allow List" }
+            return nil
+        }
+    }
+
+    /// Same decision for a tunnel that is relayed opaquely, where only host and port are known.
+    public func blockReason(forTunnelTo host: String, port: Int) -> String? {
+        lock.withLock {
+            if _block.contains(where: { $0.isEnabled && $0.matcher.coversHost(host, port: port) && $0.matcher.isHostWide }) { return "Blocked" }
+            let allow = _allow.filter(\.isEnabled)
+            if !allow.isEmpty, !allow.contains(where: { $0.matcher.coversHost(host, port: port) }) { return "Not in Allow List" }
+            return nil
+        }
+    }
+
+    /// Where to connect for `host`, when a DNS rule overrides it.
+    public func dnsOverride(for host: String) -> String? {
+        lock.withLock { _dns.first { $0.isEnabled && HostGlob.matches($0.hostPattern, host: host, port: nil) && !$0.address.isEmpty }?.address }
+    }
+
+    public func isBypassed(host: String, port: Int?) -> Bool {
+        lock.withLock { _bypass.contains { $0.isEnabled && HostGlob.matches($0.hostPattern, host: host, port: port) } }
     }
 
     public var mapLocalRules: [MapLocalRule] {

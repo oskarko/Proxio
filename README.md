@@ -70,3 +70,14 @@ File → **Save Session…** (⌘S) writes every flow, byte-exact, to a `.proxio
 ## Network conditions
 
 Tools → **Network Conditions…** (⇧⌘T) simulates a slow or dead connection for everything going through the proxy: presets (Edge, Slow/Fast 3G, 4G/LTE, Poor Wi-Fi, Offline) or custom latency and download/upload limits. It paces the client-side bytes in both directions (so it also covers HTTPS tunnels and HTTP/2), applies live without restarting, and is never persisted. A status-bar badge shows when it is active.
+
+## Block, Allow, DNS and Bypass
+
+Tools → **Block, Allow, DNS & Bypass…** (⇧⌘L), all persisted with the other rules:
+
+- **Block List**: matching requests get a `403` (noted as "Blocked") and never leave the Mac. A host-wide entry also refuses non-intercepted HTTPS tunnels.
+- **Allow List**: with at least one enabled entry, everything else is refused ("Not in Allow List"). Block wins over Allow.
+- **DNS Spoofing**: connect to another address for matching hosts; SNI and the Host header stay the original.
+- **Bypass**: HTTPS tunnels to these hosts are relayed untouched and not recorded (certificate-pinned apps). This is an in-proxy list, not the macOS system bypass setting.
+
+URL patterns without a port match the host on any port.

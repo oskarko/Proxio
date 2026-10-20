@@ -6,7 +6,16 @@ public struct RulesDocument: Codable, Sendable, Equatable {
     public var mapLocal: [MapLocalRule] = []
     public var mapRemote: [MapRemoteRule] = []
     public var scripts: [ProxioScript] = []
-    public init(breakpoints: [Breakpoint] = [], mapLocal: [MapLocalRule] = [], mapRemote: [MapRemoteRule] = [], scripts: [ProxioScript] = []) {
+    public var blockList: [AccessRule] = []
+    public var allowList: [AccessRule] = []
+    public var dns: [DNSRule] = []
+    public var bypass: [BypassRule] = []
+    public init(breakpoints: [Breakpoint] = [], mapLocal: [MapLocalRule] = [], mapRemote: [MapRemoteRule] = [], scripts: [ProxioScript] = [],
+                blockList: [AccessRule] = [], allowList: [AccessRule] = [], dns: [DNSRule] = [], bypass: [BypassRule] = []) {
+        self.blockList = blockList
+        self.allowList = allowList
+        self.dns = dns
+        self.bypass = bypass
         self.breakpoints = breakpoints
         self.mapLocal = mapLocal
         self.mapRemote = mapRemote
@@ -20,6 +29,10 @@ public struct RulesDocument: Codable, Sendable, Equatable {
         mapLocal = try c.decodeIfPresent([MapLocalRule].self, forKey: .mapLocal) ?? []
         mapRemote = try c.decodeIfPresent([MapRemoteRule].self, forKey: .mapRemote) ?? []
         scripts = try c.decodeIfPresent([ProxioScript].self, forKey: .scripts) ?? []
+        blockList = try c.decodeIfPresent([AccessRule].self, forKey: .blockList) ?? []
+        allowList = try c.decodeIfPresent([AccessRule].self, forKey: .allowList) ?? []
+        dns = try c.decodeIfPresent([DNSRule].self, forKey: .dns) ?? []
+        bypass = try c.decodeIfPresent([BypassRule].self, forKey: .bypass) ?? []
     }
 }
 
