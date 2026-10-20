@@ -18,6 +18,7 @@
 "Allow List" = "Список разрешённых";
 "Allow devices on this network" = "Разрешить устройства из этой сети";
 "Android" = "Android";
+"Anonymous operation" = "Анонимная операция";
 "Answer matching requests with a file or text, without contacting the server." = "Отвечает на подходящие запросы файлом или текстом, не обращаясь к серверу.";
 "Any" = "Любой";
 "Binary" = "Двоичные";
@@ -47,8 +48,11 @@
 "Compare Selected" = "Сравнить выбранное";
 "Compose" = "Составить";
 "Compose…" = "Составить…";
+"Connect" = "Соединение";
 "Connect to another address for matching hosts. The certificate name and Host header stay the original." = "Для подходящих хостов подключаться к другому адресу. Имя в сертификате и заголовок Host остаются исходными.";
+"Connection reused" = "Соединение повторно использовано";
 "Console" = "Консоль";
+"Copy" = "Копировать";
 "Copy as cURL" = "Копировать как cURL";
 "Could not install in simulators: %@" = "Не удалось установить в симуляторы: %@";
 "Could not open: %@" = "Не удалось открыть: %@";
@@ -76,6 +80,7 @@
 "Fast 3G" = "Быстрый 3G";
 "File" = "Файл";
 "Filter by URL, method, status or type" = "Фильтр по URL, методу, статусу или типу";
+"GraphQL" = "GraphQL";
 "HTTPS" = "HTTPS";
 "HTTPS interception on" = "Перехват HTTPS включён";
 "HTTPS tunnels to these hosts are relayed untouched and not recorded. Use it for apps that pin certificates." = "Туннели HTTPS к этим хостам передаются без изменений и не записываются. Подходит для приложений с закреплением сертификатов.";
@@ -157,6 +162,7 @@
 "Query" = "Запрос";
 "Raw" = "Исходный";
 "Reason" = "Причина";
+"Receive" = "Получение";
 "Remove" = "Удалить";
 "Remove Imported .proto Files" = "Удалить импортированные файлы .proto";
 "Remove the Proxio root certificate?" = "Удалить корневой сертификат Proxio?";
@@ -216,6 +222,7 @@
 "This Mac" = "Этот Mac";
 "Time" = "Время";
 "Tools" = "Инструменты";
+"Tree" = "Дерево";
 "Trust the Proxio root certificate?" = "Доверять корневому сертификату Proxio?";
 "Trusted on this Mac" = "Доверенный на этом Mac";
 "Turn on “Allow devices on this network” and start the proxy." = "Включите «Разрешить устройства из этой сети» и запустите прокси.";
@@ -228,6 +235,8 @@
 "Use as System Proxy" = "Использовать как системный прокси";
 "Use as system proxy" = "Использовать как системный прокси";
 "Value" = "Значение";
+"Variables" = "Переменные";
+"Wait" = "Ожидание";
 "WebSocket" = "WebSocket";
 "While this list has an enabled entry, everything that does not match it is refused with 403. The Block List still wins." = "Пока в списке есть включённая запись, всё, что ей не соответствует, отклоняется с кодом 403. Список блокировки по-прежнему приоритетнее.";
 "Wi-Fi → modify network → Proxy: Manual with the server and port above. Open the setup address and install the CA certificate. Apps that ignore user certificates stay opaque." = "Wi-Fi → изменить сеть → Прокси: вручную, сервер и порт указаны выше. Откройте адрес настройки и установите сертификат ЦС. Приложения, игнорирующие пользовательские сертификаты, останутся непрозрачными.";

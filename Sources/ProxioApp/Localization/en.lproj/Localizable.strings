@@ -16,6 +16,7 @@
 "Allow List" = "Allow List";
 "Allow devices on this network" = "Allow devices on this network";
 "Android" = "Android";
+"Anonymous operation" = "Anonymous operation";
 "Answer matching requests with a file or text, without contacting the server." = "Answer matching requests with a file or text, without contacting the server.";
 "Any" = "Any";
 "Binary" = "Binary";
@@ -45,8 +46,11 @@
 "Compare Selected" = "Compare Selected";
 "Compose" = "Compose";
 "Compose…" = "Compose…";
+"Connect" = "Connect";
 "Connect to another address for matching hosts. The certificate name and Host header stay the original." = "Connect to another address for matching hosts. The certificate name and Host header stay the original.";
+"Connection reused" = "Connection reused";
 "Console" = "Console";
+"Copy" = "Copy";
 "Copy as cURL" = "Copy as cURL";
 "Could not install in simulators: %@" = "Could not install in simulators: %@";
 "Could not open: %@" = "Could not open: %@";
@@ -74,6 +78,7 @@
 "Fast 3G" = "Fast 3G";
 "File" = "File";
 "Filter by URL, method, status or type" = "Filter by URL, method, status or type";
+"GraphQL" = "GraphQL";
 "HTTPS" = "HTTPS";
 "HTTPS interception on" = "HTTPS interception on";
 "HTTPS tunnels to these hosts are relayed untouched and not recorded. Use it for apps that pin certificates." = "HTTPS tunnels to these hosts are relayed untouched and not recorded. Use it for apps that pin certificates.";
@@ -155,6 +160,7 @@
 "Query" = "Query";
 "Raw" = "Raw";
 "Reason" = "Reason";
+"Receive" = "Receive";
 "Remove" = "Remove";
 "Remove Imported .proto Files" = "Remove Imported .proto Files";
 "Remove the Proxio root certificate?" = "Remove the Proxio root certificate?";
@@ -214,6 +220,7 @@
 "This Mac" = "This Mac";
 "Time" = "Time";
 "Tools" = "Tools";
+"Tree" = "Tree";
 "Trust the Proxio root certificate?" = "Trust the Proxio root certificate?";
 "Trusted on this Mac" = "Trusted on this Mac";
 "Turn on “Allow devices on this network” and start the proxy." = "Turn on “Allow devices on this network” and start the proxy.";
@@ -226,6 +233,8 @@
 "Use as System Proxy" = "Use as System Proxy";
 "Use as system proxy" = "Use as system proxy";
 "Value" = "Value";
+"Variables" = "Variables";
+"Wait" = "Wait";
 "WebSocket" = "WebSocket";
 "While this list has an enabled entry, everything that does not match it is refused with 403. The Block List still wins." = "While this list has an enabled entry, everything that does not match it is refused with 403. The Block List still wins.";
 "Wi-Fi → modify network → Proxy: Manual with the server and port above. Open the setup address and install the CA certificate. Apps that ignore user certificates stay opaque." = "Wi-Fi → modify network → Proxy: Manual with the server and port above. Open the setup address and install the CA certificate. Apps that ignore user certificates stay opaque.";

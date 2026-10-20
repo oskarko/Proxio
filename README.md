@@ -31,6 +31,11 @@ Proxio is an independent clean-room project. It is not affiliated with any comme
 
 - **Diff**: select two requests (⌘-click) and press Compare. Start line, headers (order and case ignored) and body (JSON compared pretty-printed with sorted keys, so formatting is not a difference) are shown line by line, for the request and the response, with an "only changes" view.
 
+### Viewers
+- **Tree**: any JSON body as a collapsible outline. **GraphQL**: request bodies with a `query` (single or batched) show each operation's name, query and variables.
+- **Timings**: a bar under the request line splits connect, wait and receive (connect is absent when a pooled connection was reused). They are exported to and read back from HAR.
+- **Code**: the request pane's Code tab renders the request as cURL, Swift (URLSession), Python (requests), JavaScript (fetch), Kotlin (OkHttp) or HTTPie, with a Copy button.
+
 ### WebSocket
 
 A `101 Switching Protocols` upgrade is relayed byte for byte while a passive parser records every text, binary, close, ping and pong frame (per direction, 1 MB stored per message). `permessage-deflate` is not negotiated so frames stay readable. Messages show in the inspector and in HAR exports.

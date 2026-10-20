@@ -42,7 +42,9 @@ public enum HARExporter {
                     "bodySize": res?.body.count ?? 0,
                 ] as [String: Any],
                 "cache": [String: Any](),
-                "timings": ["send": 0, "wait": f.duration * 1000, "receive": 0],
+                "timings": f.timings.map { t in
+                    ["send": 0, "connect": t.connect.map { $0 * 1000 } ?? -1, "wait": t.wait * 1000, "receive": t.receive * 1000]
+                } ?? ["send": 0, "wait": f.duration * 1000, "receive": 0],
             ]
             if !f.request.body.isEmpty, var req = entry["request"] as? [String: Any] {
                 let mime = f.request.headers.first { $0.name.caseInsensitiveCompare("Content-Type") == .orderedSame }?.value ?? ""

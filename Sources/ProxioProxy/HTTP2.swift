@@ -18,6 +18,30 @@ protocol UpstreamDelegate: AnyObject {
     func upstreamBody(_ bytes: ByteBuffer)
     func upstreamEnd(trailers: [HTTPHeader])
     func upstreamFailed(_ error: Error)
+    /// The request is about to be sent upstream (pooled or not).
+    func upstreamStarted()
+    /// A new upstream connection (TCP and TLS) is ready after `seconds`.
+    func upstreamConnected(after seconds: TimeInterval)
+}
+
+extension UpstreamDelegate {
+    func upstreamStarted() {}
+    func upstreamConnected(after seconds: TimeInterval) {}
+}
+
+/// Measures connect / wait / receive for one upstream exchange.
+struct TimingTracker {
+    private var started = Date()
+    private var connect: TimeInterval?
+    private var headAt: Date?
+
+    mutating func start() { started = Date(); connect = nil; headAt = nil }
+    mutating func connected(_ seconds: TimeInterval) { connect = seconds }
+    mutating func head() { if headAt == nil { headAt = Date() } }
+    func result() -> FlowTimings? {
+        guard let headAt else { return nil }
+        return FlowTimings(connect: connect, wait: max(0, headAt.timeIntervalSince(started) - (connect ?? 0)), receive: max(0, Date().timeIntervalSince(headAt)))
+    }
 }
 
 enum UpstreamError: Error { case badRequest, closed }
@@ -112,6 +136,7 @@ enum UpstreamConnection {
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return delegate.upstreamFailed(UpstreamError.badRequest)
         }
+        delegate.upstreamStarted()
         let useTLS = scheme == "https"
         let port = url.port ?? (useTLS ? 443 : 80)
         var path = components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath
@@ -150,6 +175,7 @@ enum UpstreamConnection {
     }
 
     private static func connect(_ t: Target, env: ProxyEnvironment, loop: EventLoop, delegate: UpstreamDelegate) {
+        let began = Date()
         ClientBootstrap(group: loop)
             .channelInitializer { channel in
                 channel.eventLoop.makeCompletedFuture {
@@ -163,10 +189,12 @@ enum UpstreamConnection {
                                 return channel.configureHTTP2Pipeline(mode: .client, inboundStreamInitializer: nil).map { multiplexer in
                                     let conn = UpstreamPool.H2Connection(channel: channel, multiplexer: multiplexer)
                                     env.pool.register(t.key, conn)
+                                    delegate.upstreamConnected(after: Date().timeIntervalSince(began))
                                     sendHTTP2(t, on: conn, env: env, delegate: delegate)
                                 }
                             }
                             return installHTTP1(on: channel).map { handler in
+                                delegate.upstreamConnected(after: Date().timeIntervalSince(began))
                                 sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
                             }
                         }
@@ -182,7 +210,9 @@ enum UpstreamConnection {
                     if !t.tls {
                         installHTTP1(on: channel).whenComplete {
                             switch $0 {
-                            case .success(let handler): sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
+                            case .success(let handler):
+                                delegate.upstreamConnected(after: Date().timeIntervalSince(began))
+                                sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
                             case .failure(let error): delegate.upstreamFailed(error)
                             }
                         }
@@ -287,6 +317,8 @@ enum UpstreamConnection {
         init(_ inner: UpstreamDelegate, retry: @escaping () -> Void) { self.inner = inner; self.retry = retry }
         func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) { sawHead = true; inner.upstreamHead(status: status, reason: reason, headers: headers) }
         func upstreamBody(_ bytes: ByteBuffer) { inner.upstreamBody(bytes) }
+        func upstreamStarted() { inner.upstreamStarted() }
+        func upstreamConnected(after seconds: TimeInterval) { inner.upstreamConnected(after: seconds) }
         func upstreamEnd(trailers: [HTTPHeader]) { inner.upstreamEnd(trailers: trailers) }
         func upstreamFailed(_ error: Error) {
             if !sawHead, let retry { self.retry = nil; return retry() }
@@ -474,6 +506,7 @@ final class HTTP2Exchange: UpstreamDelegate {
     private var holds = false
     private var streamed = false
     private var pause: BreakpointHandler?
+    private var timing = TimingTracker()
 
     init(environment: ProxyEnvironment, stream: Channel, startedAt: Date) {
         self.env = environment
@@ -516,7 +549,11 @@ final class HTTP2Exchange: UpstreamDelegate {
 
     // MARK: UpstreamDelegate
 
+    func upstreamStarted() { timing.start() }
+    func upstreamConnected(after seconds: TimeInterval) { timing.connected(seconds) }
+
     func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) {
+        timing.head()
         response = HTTPResponseRecord(status: status, reason: reason, httpVersion: "HTTP/2", headers: headers)
         guard !holds else { return }
         streamed = true
@@ -580,6 +617,7 @@ final class HTTP2Exchange: UpstreamDelegate {
         var done = flow
         done.response = response
         done.duration = Date().timeIntervalSince(startedAt)
+        done.timings = timing.result()
         let store = env.store
         Task { await store.add(done) }
     }

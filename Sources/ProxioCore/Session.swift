@@ -101,6 +101,12 @@ public enum HARImporter {
             let started = (e["startedDateTime"] as? String).flatMap { iso.date(from: $0) ?? plain.date(from: $0) } ?? Date()
             var flow = Flow(startedAt: started, duration: max(0, number(e["time"])) / 1000, request: request, response: response)
 
+            if let t = e["timings"] as? [String: Any], t["connect"] != nil {
+                let connect = number(t["connect"])
+                flow.timings = FlowTimings(connect: connect >= 0 ? connect / 1000 : nil,
+                                           wait: max(0, number(t["wait"])) / 1000, receive: max(0, number(t["receive"])) / 1000)
+            }
+
             if let frames = e["_webSocketMessages"] as? [[String: Any]] {
                 flow.messages = frames.map { m in
                     let opcode = Int(number(m["opcode"]))

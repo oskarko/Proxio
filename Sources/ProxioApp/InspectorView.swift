@@ -16,7 +16,7 @@ struct InspectorView: View {
                         headers: flow.request.headers, payload: flow.request.decodedBody,
                         mime: header("Content-Type", in: flow.request.headers), query: queryItems,
                         raw: rawText(start: "\(flow.request.method) \(requestTarget) \(flow.request.httpVersion)", headers: flow.request.headers, body: flow.request.decodedBody),
-                        messages: [], grpcPath: flow.request.url.path, isRequest: true
+                        messages: [], grpcPath: flow.request.url.path, isRequest: true, codeRequest: flow.request
                     )
                 }
                 .frame(minWidth: 280)
@@ -54,6 +54,7 @@ struct InspectorView: View {
                 }
             }
             .font(.caption).foregroundStyle(.secondary)
+            if let t = flow.timings { TimingBar(timings: t) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -98,9 +99,10 @@ private struct MessageView: View {
     let messages: [WebSocketMessage]
     var grpcPath: String? = nil
     var isRequest = false
+    var codeRequest: HTTPRequestRecord? = nil
     @State private var tab: Tab = .body
     enum Tab: CaseIterable {
-        case headers, query, body, raw, messages
+        case headers, query, body, raw, messages, code
         var title: LocalizedStringKey {
             switch self {
             case .headers: "Headers"
@@ -108,12 +110,13 @@ private struct MessageView: View {
             case .body: "Body"
             case .raw: "Raw"
             case .messages: "Messages"
+            case .code: "Code"
             }
         }
     }
 
     private var tabs: [Tab] {
-        Tab.allCases.filter { ($0 != .query || !query.isEmpty) && ($0 != .messages || !messages.isEmpty) }
+        Tab.allCases.filter { ($0 != .query || !query.isEmpty) && ($0 != .messages || !messages.isEmpty) && ($0 != .code || codeRequest != nil) }
     }
 
     var body: some View {
@@ -132,6 +135,7 @@ private struct MessageView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
                 }
             case .messages: WebSocketMessagesView(messages: messages)
+            case .code: if let codeRequest { CodeView(request: codeRequest) }
             }
         }
     }
@@ -155,10 +159,12 @@ private struct BodyView: View {
     var isRequest = false
     @State private var mode: Mode = .pretty
     enum Mode: CaseIterable {
-        case pretty, raw, hex
+        case pretty, tree, graphql, raw, hex
         var title: LocalizedStringKey {
             switch self {
             case .pretty: "Pretty"
+            case .tree: "Tree"
+            case .graphql: "GraphQL"
             case .raw: "Raw"
             case .hex: "Hex"
             }
@@ -173,9 +179,20 @@ private struct BodyView: View {
         } else {
             VStack(spacing: 0) {
                 Picker("", selection: $mode) {
-                    ForEach(Mode.allCases, id: \.self) { Text($0.title) }
+                    ForEach(modes, id: \.self) { Text($0.title) }
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 220).padding(.bottom, 6)
+                .pickerStyle(.segmented).labelsHidden().frame(width: CGFloat(modes.count) * 75).padding(.bottom, 6)
+                if mode == .tree, let root = tree {
+                    List([root], children: \.children) { node in
+                        HStack(spacing: 6) {
+                            if let key = node.key { Text(key).foregroundStyle(Color.proxioAccent) }
+                            Text(node.summary).foregroundStyle(node.children == nil ? .primary : .secondary).textSelection(.enabled)
+                        }
+                        .font(.system(.body, design: .monospaced))
+                    }
+                } else if mode == .graphql {
+                    GraphQLView(operations: operations)
+                } else {
                 ScrollView([.horizontal, .vertical]) {
                     Text(rendered)
                         .font(.system(.body, design: .monospaced))
@@ -183,12 +200,20 @@ private struct BodyView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                 }
+                }
             }
         }
     }
 
+    private var tree: JSONNode? { JSONNode.parse(data) }
+    private var operations: [GraphQLOperation] { GraphQLParser.operations(in: data) }
+    private var modes: [Mode] {
+        Mode.allCases.filter { ($0 != .tree || tree != nil) && ($0 != .graphql || !operations.isEmpty) }
+    }
+
     private var rendered: String {
         switch mode {
+        case .tree, .graphql: BodyFormatter.prettyJSON(data) ?? String(data: data, encoding: .utf8) ?? ""
         case .pretty: BodyFormatter.prettyJSON(data) ?? BodyFormatter.prettyProtobuf(data, contentType: mime, grpcPath: grpcPath, isRequest: isRequest) ?? String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .raw: String(data: data, encoding: .utf8) ?? BodyFormatter.hexDump(data)
         case .hex: BodyFormatter.hexDump(data)
@@ -241,5 +266,86 @@ private struct WebSocketMessagesView: View {
     private func preview(_ m: WebSocketMessage) -> String {
         if let text = m.text { return text.replacingOccurrences(of: "\n", with: " ") }
         return "<\(BodyFormatter.byteCount(m.size))>"
+    }
+}
+
+private struct GraphQLView: View {
+    let operations: [GraphQLOperation]
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array(operations.enumerated()), id: \.offset) { _, op in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(op.name ?? String(localized: "Anonymous operation")).font(.headline)
+                        Text(op.query).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        if let vars = op.variables {
+                            Text("Variables").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
+                            Text(vars).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(10)
+        }
+    }
+}
+
+private struct CodeView: View {
+    let request: HTTPRequestRecord
+    @State private var language: CodeLanguage = .curl
+
+    var body: some View {
+        let code = CodeGenerator.generate(request, as: language)
+        VStack(spacing: 0) {
+            HStack {
+                Picker("", selection: $language) {
+                    ForEach(CodeLanguage.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .labelsHidden().frame(width: 200)
+                Spacer()
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code, forType: .string)
+                }
+            }
+            .padding(.horizontal, 10).padding(.bottom, 6)
+            ScrollView([.horizontal, .vertical]) {
+                Text(code).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(10)
+            }
+        }
+    }
+}
+
+/// Connect / wait / receive as proportional segments.
+private struct TimingBar: View {
+    let timings: FlowTimings
+
+    var body: some View {
+        let parts: [(LocalizedStringKey, TimeInterval, Color)] = [
+            ("Connect", timings.connect ?? 0, .orange), ("Wait", timings.wait, Color.proxioAccent), ("Receive", timings.receive, .blue),
+        ].filter { $0.1 > 0 || $0.0 == "Wait" }
+        let total = max(parts.reduce(0) { $0 + $1.1 }, 0.0001)
+        VStack(alignment: .leading, spacing: 3) {
+            GeometryReader { geo in
+                HStack(spacing: 1) {
+                    ForEach(Array(parts.enumerated()), id: \.offset) { _, p in
+                        p.2.frame(width: max(2, geo.size.width * p.1 / total))
+                    }
+                }
+            }
+            .frame(height: 6).clipShape(Capsule())
+            HStack(spacing: 10) {
+                ForEach(Array(parts.enumerated()), id: \.offset) { _, p in
+                    HStack(spacing: 3) {
+                        Circle().fill(p.2).frame(width: 6, height: 6)
+                        Text(p.0); Text("\(Int(p.1 * 1000)) ms")
+                    }
+                }
+                if timings.connect == nil { Text("Connection reused").foregroundStyle(.tertiary) }
+            }
+            .font(.caption2)
+        }
     }
 }

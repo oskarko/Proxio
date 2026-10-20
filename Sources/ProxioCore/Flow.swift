@@ -60,6 +60,21 @@ public struct HTTPResponseRecord: Sendable, Equatable, Codable {
 }
 
 /// One captured request/response exchange.
+/// Where a request spent its time. `connect` is nil when a pooled connection was reused.
+public struct FlowTimings: Sendable, Equatable, Codable {
+    public var connect: TimeInterval?
+    /// From sending the request to the first response byte.
+    public var wait: TimeInterval
+    /// From the first response byte to the last.
+    public var receive: TimeInterval
+
+    public init(connect: TimeInterval? = nil, wait: TimeInterval, receive: TimeInterval) {
+        self.connect = connect
+        self.wait = wait
+        self.receive = receive
+    }
+}
+
 public struct Flow: Sendable, Identifiable, Equatable, Codable {
     public let id: UUID
     public var startedAt: Date
@@ -70,13 +85,14 @@ public struct Flow: Sendable, Identifiable, Equatable, Codable {
     public var notes: [String]
     /// Frames seen after a WebSocket upgrade (101), oldest first.
     public var messages: [WebSocketMessage]
+    public var timings: FlowTimings?
 
     public var isWebSocket: Bool {
         response?.status == 101
             && request.headers.contains { $0.name.caseInsensitiveCompare("Upgrade") == .orderedSame && $0.value.lowercased() == "websocket" }
     }
 
-    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil, notes: [String] = [], messages: [WebSocketMessage] = []) {
+    public init(id: UUID = UUID(), startedAt: Date = Date(), duration: TimeInterval = 0, request: HTTPRequestRecord, response: HTTPResponseRecord? = nil, notes: [String] = [], messages: [WebSocketMessage] = [], timings: FlowTimings? = nil) {
         self.id = id
         self.startedAt = startedAt
         self.duration = duration
@@ -84,5 +100,6 @@ public struct Flow: Sendable, Identifiable, Equatable, Codable {
         self.response = response
         self.notes = notes
         self.messages = messages
+        self.timings = timings
     }
 }

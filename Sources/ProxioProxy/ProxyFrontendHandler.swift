@@ -396,6 +396,7 @@ final class UpstreamResponseHandler: ChannelInboundHandler, RemovableChannelHand
     private var upgrading = false
     /// The client wants to reuse its connection; downgraded to false when the response has no length framing.
     private var keepAlive: Bool
+    private var timing = TimingTracker()
 
     init(client: Channel, flow: Flow, environment: ProxyEnvironment, keepAlive: Bool) {
         self.keepAlive = keepAlive
@@ -499,6 +500,7 @@ final class HTTP1Exchange: UpstreamDelegate {
     private var wroteHead = false
     /// The client wants to reuse its connection; downgraded when the response has no length framing.
     private var keepAlive: Bool
+    private var timing = TimingTracker()
 
     init(client: Channel, flow: Flow, environment: ProxyEnvironment, keepAlive: Bool) {
         self.client = client
@@ -510,7 +512,11 @@ final class HTTP1Exchange: UpstreamDelegate {
         self.holds = pauseHandler != nil || environment.rules.hasScripts(for: flow.request)
     }
 
+    func upstreamStarted() { timing.start() }
+    func upstreamConnected(after seconds: TimeInterval) { timing.connected(seconds) }
+
     func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) {
+        timing.head()
         response = HTTPResponseRecord(status: status, reason: reason, headers: headers)
         guard !holds else { return }
         var out = HTTPHeaders()
@@ -562,6 +568,7 @@ final class HTTP1Exchange: UpstreamDelegate {
     private func record(_ response: HTTPResponseRecord) {
         flow.response = response
         flow.duration = Date().timeIntervalSince(flow.startedAt)
+        flow.timings = timing.result()
         let done = flow, store = self.store
         Task { await store.add(done) }
     }
