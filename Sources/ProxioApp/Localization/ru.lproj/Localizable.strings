@@ -23,8 +23,10 @@
 "Any" = "Любой";
 "Authentication" = "Аутентификация";
 "Binary" = "Двоичные";
+"Block %@" = "Заблокировать %@";
 "Block List" = "Список блокировки";
 "Block, Allow, DNS & Bypass…" = "Блокировка, разрешения, DNS и обход…";
+"Blocked %@" = "%@ заблокирован";
 "Body" = "Тело";
 "Body is binary (%@) and is kept unchanged" = "Тело двоичное (%@) и остаётся без изменений";
 "Body is binary (%@) and is sent unchanged" = "Тело двоичное (%@) и отправляется без изменений";
@@ -41,6 +43,7 @@
 "Certificate trusted" = "Сертификат доверенный";
 "Choose…" = "Выбрать…";
 "Clear" = "Очистить";
+"Clear Filter" = "Сбросить фильтр";
 "Clear Session" = "Очистить сеанс";
 "Clear session" = "Очистить сеанс";
 "Close" = "Закрытие";
@@ -54,6 +57,7 @@
 "Connect to another address for matching hosts. The certificate name and Host header stay the original." = "Для подходящих хостов подключаться к другому адресу. Имя в сертификате и заголовок Host остаются исходными.";
 "Connection reused" = "Соединение повторно использовано";
 "Console" = "Консоль";
+"Content Type" = "Тип содержимого";
 "Copy" = "Копировать";
 "Copy as cURL" = "Копировать как cURL";
 "Could not install in simulators: %@" = "Не удалось установить в симуляторы: %@";
@@ -64,6 +68,7 @@
 "Custom" = "Свой";
 "DNS Spoofing" = "Подмена DNS";
 "Data" = "Данные";
+"Delete Saved Filter" = "Удалить сохранённый фильтр";
 "Different" = "Различаются";
 "Direct connections" = "Прямые соединения";
 "Domains" = "Домены";
@@ -141,6 +146,7 @@
 "No scripts" = "Нет скриптов";
 "Not recording" = "Запись остановлена";
 "Not trusted" = "Не доверенный";
+"Notes" = "Заметки";
 "Nothing is installed until you confirm the exact command." = "Ничего не устанавливается, пока вы не подтвердите точную команду.";
 "Offline" = "Нет соединения";
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Один шаблон в строке: host, *.host или host:порт. Исключения имеют приоритет. Без включений перехватываются все хосты.";
@@ -149,6 +155,7 @@
 "Open Session…" = "Открыть сессию…";
 "Password" = "Пароль";
 "Path" = "Путь";
+"Pin" = "Закрепить";
 "Ping" = "Ping";
 "Pong" = "Pong";
 "Poor Wi-Fi" = "Слабый Wi-Fi";
@@ -158,6 +165,7 @@
 "Privileged helper: not installed" = "Привилегированный помощник: не установлен";
 "Privileged helper: waiting for approval" = "Привилегированный помощник: ожидает одобрения";
 "Profile" = "Профиль";
+"Protocol" = "Протокол";
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio обнаружил закрытый ключ ЦС в виде обычного файла (ca-key.pem). Его можно хранить в связке ключей входа; после этого файл перезаписывается и удаляется.";
 "Proxio on GitHub" = "Proxio на GitHub";
@@ -185,7 +193,11 @@
 "Root certificate" = "Корневой сертификат";
 "Route %@ traffic through Proxio?" = "Направлять трафик %@ через Proxio?";
 "SSL proxying" = "SSL-проксирование";
+"Save" = "Сохранить";
+"Save Current Filter…" = "Сохранить текущий фильтр…";
+"Save Filter" = "Сохранить фильтр";
 "Save Session…" = "Сохранить сессию…";
+"Saved Filters" = "Сохранённые фильтры";
 "Scan with the phone camera" = "Отсканируйте камерой телефона";
 "Scripting…" = "Скрипты…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Скрипты на JavaScript могут изменять подходящие запросы и ответы. Определите onRequest(request) и/или onResponse(request, response) и верните объект. Пишите короткие скрипты: скрипт, который не завершается, блокирует свой запрос.";
@@ -215,6 +227,7 @@
 "Start the proxy" = "Запустить прокси";
 "Start the proxy to see the setup address." = "Запустите прокси, чтобы увидеть адрес настройки.";
 "Start the proxy with HTTPS interception first" = "Сначала запустите прокси с перехватом HTTPS";
+"Started" = "Начало";
 "Status" = "Статус";
 "Status must be between 100 and 599" = "Статус должен быть от 100 до 599";
 "Stop" = "Остановить";
@@ -239,6 +252,7 @@
 "URL" = "URL";
 "URL pattern" = "Шаблон URL";
 "URL pattern (e.g. ads.example.com/*)" = "Шаблон URL (напр. ads.example.com/*)";
+"Unpin" = "Открепить";
 "Upload" = "Отдача";
 "Upload limit (kbit/s, 0 = unlimited)" = "Лимит отдачи (кбит/с, 0 = без лимита)";
 "Use as System Proxy" = "Использовать как системный прокси";

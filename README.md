@@ -36,6 +36,9 @@ Proxio is an independent clean-room project. It is not affiliated with any comme
 - **Timings**: a bar under the request line splits connect, wait and receive (connect is absent when a pooled connection was reused). They are exported to and read back from HAR.
 - **Code**: the request pane's Code tab renders the request as cURL, Swift (URLSession), Python (requests), JavaScript (fetch), Kotlin (OkHttp) or HTTPie, with a Copy button.
 
+### The request list
+Right-click the column header to show, hide or reorder columns (Content Type, Protocol, Started and Notes are hidden by default); the layout is remembered. Pin keeps selected requests at the top, the filter menu next to the quick filters saves and recalls a search + quick filter + host combination, and "Block <host>" in the context menu adds a Block List entry.
+
 ### WebSocket
 
 A `101 Switching Protocols` upgrade is relayed byte for byte while a passive parser records every text, binary, close, ping and pong frame (per direction, 1 MB stored per message). `permessage-deflate` is not negotiated so frames stay readable. Messages show in the inspector and in HAR exports.

@@ -13,6 +13,48 @@ final class AppModel {
     var searchText = ""
     var hostFilter: String?
     var quickFilter: QuickFilter = .all
+    /// Flows kept at the top of the list.
+    var pinned: Set<UUID> = []
+    var savedFilters: [SavedFilter] = SavedFilter.load() { didSet { SavedFilter.save(savedFilters) } }
+
+    struct SavedFilter: Codable, Identifiable, Equatable {
+        var id = UUID()
+        var name: String
+        var text: String
+        var quick: String
+        var host: String?
+
+        private static let key = "savedFilters"
+        static func load() -> [SavedFilter] {
+            UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([SavedFilter].self, from: $0) } ?? []
+        }
+        static func save(_ filters: [SavedFilter]) {
+            UserDefaults.standard.set(try? JSONEncoder().encode(filters), forKey: key)
+        }
+    }
+
+    func saveCurrentFilter(named name: String) {
+        savedFilters.append(SavedFilter(name: name, text: searchText, quick: quickFilter.rawValue, host: hostFilter))
+    }
+
+    func apply(_ filter: SavedFilter) {
+        searchText = filter.text
+        quickFilter = QuickFilter(rawValue: filter.quick) ?? .all
+        hostFilter = filter.host
+    }
+
+    var hasActiveFilter: Bool { !searchText.isEmpty || quickFilter != .all || hostFilter != nil }
+
+    func togglePin(_ ids: Set<UUID>) {
+        if ids.isSubset(of: pinned) { pinned.subtract(ids) } else { pinned.formUnion(ids) }
+    }
+
+    /// Adds a Block List entry covering the whole host.
+    func blockHost(of flow: Flow) {
+        guard let host = flow.request.url.host else { return }
+        blockList.append(AccessRule(matcher: RequestMatcher(urlPattern: host)))
+        status = String(localized: "Blocked \(host)")
+    }
 
     enum QuickFilter: String, CaseIterable, Identifiable {
         case all, https, webSocket, errors
@@ -155,11 +197,13 @@ final class AppModel {
     }
 
     var visibleFlows: [Flow] {
-        flows.filter { f in
+        let shown = flows.filter { f in
             (hostFilter == nil || f.request.url.host == hostFilter)
                 && passes(quickFilter, f)
                 && (searchText.isEmpty || matches(f, searchText))
         }
+        guard !pinned.isEmpty else { return shown }
+        return shown.filter { pinned.contains($0.id) } + shown.filter { !pinned.contains($0.id) }
     }
 
     /// The flow shown in the inspector: only when exactly one is selected.
@@ -221,6 +265,7 @@ final class AppModel {
 
     func clear() {
         selection = []
+        pinned = []
         Task { await store.clear() }
     }
 

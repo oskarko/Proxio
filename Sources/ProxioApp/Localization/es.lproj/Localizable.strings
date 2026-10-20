@@ -23,8 +23,10 @@
 "Any" = "Cualquiera";
 "Authentication" = "Autenticación";
 "Binary" = "Binario";
+"Block %@" = "Bloquear %@";
 "Block List" = "Lista de bloqueo";
 "Block, Allow, DNS & Bypass…" = "Bloqueo, permitidos, DNS y bypass…";
+"Blocked %@" = "%@ bloqueado";
 "Body" = "Cuerpo";
 "Body is binary (%@) and is kept unchanged" = "El cuerpo es binario (%@) y se mantiene sin cambios";
 "Body is binary (%@) and is sent unchanged" = "El cuerpo es binario (%@) y se envía sin cambios";
@@ -41,6 +43,7 @@
 "Certificate trusted" = "Certificado de confianza";
 "Choose…" = "Elegir…";
 "Clear" = "Limpiar";
+"Clear Filter" = "Quitar filtro";
 "Clear Session" = "Limpiar sesión";
 "Clear session" = "Limpiar sesión";
 "Close" = "Cierre";
@@ -54,6 +57,7 @@
 "Connect to another address for matching hosts. The certificate name and Host header stay the original." = "Conecta a otra dirección para los hosts coincidentes. El nombre del certificado y la cabecera Host no cambian.";
 "Connection reused" = "Conexión reutilizada";
 "Console" = "Consola";
+"Content Type" = "Tipo de contenido";
 "Copy" = "Copiar";
 "Copy as cURL" = "Copiar como cURL";
 "Could not install in simulators: %@" = "No se pudo instalar en simuladores: %@";
@@ -64,6 +68,7 @@
 "Custom" = "Personalizado";
 "DNS Spoofing" = "Suplantación DNS";
 "Data" = "Datos";
+"Delete Saved Filter" = "Eliminar filtro guardado";
 "Different" = "Diferentes";
 "Direct connections" = "Conexiones directas";
 "Domains" = "Dominios";
@@ -141,6 +146,7 @@
 "No scripts" = "Sin scripts";
 "Not recording" = "Sin grabar";
 "Not trusted" = "Sin confianza";
+"Notes" = "Notas";
 "Nothing is installed until you confirm the exact command." = "No se instala nada hasta que confirmes el comando exacto.";
 "Offline" = "Sin conexión";
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Un patrón por línea: host, *.host o host:puerto. Las exclusiones tienen prioridad. Sin inclusiones se intercepta cualquier host.";
@@ -149,6 +155,7 @@
 "Open Session…" = "Abrir sesión…";
 "Password" = "Contraseña";
 "Path" = "Ruta";
+"Pin" = "Fijar";
 "Ping" = "Ping";
 "Pong" = "Pong";
 "Poor Wi-Fi" = "Wi-Fi débil";
@@ -158,6 +165,7 @@
 "Privileged helper: not installed" = "Asistente privilegiado: no instalado";
 "Privileged helper: waiting for approval" = "Asistente privilegiado: esperando aprobación";
 "Profile" = "Perfil";
+"Protocol" = "Protocolo";
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio encontró su clave privada de CA como archivo de texto plano (ca-key.pem). Puede guardarse en tu llavero de inicio de sesión; después el archivo se sobrescribe y se elimina.";
 "Proxio on GitHub" = "Proxio en GitHub";
@@ -185,7 +193,11 @@
 "Root certificate" = "Certificado raíz";
 "Route %@ traffic through Proxio?" = "¿Dirigir el tráfico de %@ por Proxio?";
 "SSL proxying" = "Proxy SSL";
+"Save" = "Guardar";
+"Save Current Filter…" = "Guardar filtro actual…";
+"Save Filter" = "Guardar filtro";
 "Save Session…" = "Guardar sesión…";
+"Saved Filters" = "Filtros guardados";
 "Scan with the phone camera" = "Escanea con la cámara del móvil";
 "Scripting…" = "Scripts…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.";
@@ -215,6 +227,7 @@
 "Start the proxy" = "Iniciar el proxy";
 "Start the proxy to see the setup address." = "Inicia el proxy para ver la dirección de configuración.";
 "Start the proxy with HTTPS interception first" = "Inicia antes el proxy con intercepción HTTPS";
+"Started" = "Inicio";
 "Status" = "Estado";
 "Status must be between 100 and 599" = "El estado debe estar entre 100 y 599";
 "Stop" = "Detener";
@@ -239,6 +252,7 @@
 "URL" = "URL";
 "URL pattern" = "Patrón de URL";
 "URL pattern (e.g. ads.example.com/*)" = "Patrón de URL (p. ej. ads.example.com/*)";
+"Unpin" = "Desfijar";
 "Upload" = "Subida";
 "Upload limit (kbit/s, 0 = unlimited)" = "Límite de subida (kbit/s, 0 = sin límite)";
 "Use as System Proxy" = "Usar como proxy del sistema";

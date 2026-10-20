@@ -23,8 +23,10 @@
 "Any" = "Tous";
 "Authentication" = "Authentification";
 "Binary" = "Binaire";
+"Block %@" = "Bloquer %@";
 "Block List" = "Liste de blocage";
 "Block, Allow, DNS & Bypass…" = "Blocage, autorisations, DNS et contournement…";
+"Blocked %@" = "%@ bloqué";
 "Body" = "Corps";
 "Body is binary (%@) and is kept unchanged" = "Le corps est binaire (%@) et reste inchangé";
 "Body is binary (%@) and is sent unchanged" = "Le corps est binaire (%@) et est envoyé inchangé";
@@ -41,6 +43,7 @@
 "Certificate trusted" = "Certificat approuvé";
 "Choose…" = "Choisir…";
 "Clear" = "Effacer";
+"Clear Filter" = "Effacer le filtre";
 "Clear Session" = "Effacer la session";
 "Clear session" = "Effacer la session";
 "Close" = "Fermeture";
@@ -54,6 +57,7 @@
 "Connect to another address for matching hosts. The certificate name and Host header stay the original." = "Se connecte à une autre adresse pour les hôtes correspondants. Le nom du certificat et l’en-tête Host restent d’origine.";
 "Connection reused" = "Connexion réutilisée";
 "Console" = "Console";
+"Content Type" = "Type de contenu";
 "Copy" = "Copier";
 "Copy as cURL" = "Copier en cURL";
 "Could not install in simulators: %@" = "Installation impossible dans les simulateurs : %@";
@@ -64,6 +68,7 @@
 "Custom" = "Personnalisé";
 "DNS Spoofing" = "Usurpation DNS";
 "Data" = "Données";
+"Delete Saved Filter" = "Supprimer un filtre enregistré";
 "Different" = "Différentes";
 "Direct connections" = "Connexions directes";
 "Domains" = "Domaines";
@@ -141,6 +146,7 @@
 "No scripts" = "Aucun script";
 "Not recording" = "Enregistrement arrêté";
 "Not trusted" = "Non approuvé";
+"Notes" = "Notes";
 "Nothing is installed until you confirm the exact command." = "Rien n’est installé tant que vous n’avez pas confirmé la commande exacte.";
 "Offline" = "Hors ligne";
 "One pattern per line: host, *.host, or host:port. Exclusions win. With no inclusions every host is intercepted." = "Un motif par ligne : hôte, *.hôte ou hôte:port. Les exclusions l’emportent. Sans inclusion, tous les hôtes sont interceptés.";
@@ -149,6 +155,7 @@
 "Open Session…" = "Ouvrir une session…";
 "Password" = "Mot de passe";
 "Path" = "Chemin";
+"Pin" = "Épingler";
 "Ping" = "Ping";
 "Pong" = "Pong";
 "Poor Wi-Fi" = "Wi-Fi faible";
@@ -158,6 +165,7 @@
 "Privileged helper: not installed" = "Assistant privilégié : non installé";
 "Privileged helper: waiting for approval" = "Assistant privilégié : en attente d’approbation";
 "Profile" = "Profil";
+"Protocol" = "Protocole";
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio a trouvé sa clé privée d’AC dans un fichier en clair (ca-key.pem). Elle peut être stockée dans votre trousseau de session ; le fichier est alors écrasé puis supprimé.";
 "Proxio on GitHub" = "Proxio sur GitHub";
@@ -185,7 +193,11 @@
 "Root certificate" = "Certificat racine";
 "Route %@ traffic through Proxio?" = "Faire passer le trafic de %@ par Proxio ?";
 "SSL proxying" = "Proxy SSL";
+"Save" = "Enregistrer";
+"Save Current Filter…" = "Enregistrer le filtre actuel…";
+"Save Filter" = "Enregistrer le filtre";
 "Save Session…" = "Enregistrer la session…";
+"Saved Filters" = "Filtres enregistrés";
 "Scan with the phone camera" = "Scannez avec l’appareil photo du téléphone";
 "Scripting…" = "Scripts…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Les scripts peuvent modifier en JavaScript les requêtes et réponses correspondantes. Définissez onRequest(request) et/ou onResponse(request, response) et renvoyez l’objet. Gardez les scripts courts : un script qui ne se termine jamais bloque sa requête.";
@@ -215,6 +227,7 @@
 "Start the proxy" = "Démarrer le proxy";
 "Start the proxy to see the setup address." = "Démarrez le proxy pour voir l’adresse de configuration.";
 "Start the proxy with HTTPS interception first" = "Démarrez d’abord le proxy avec l’interception HTTPS";
+"Started" = "Début";
 "Status" = "Statut";
 "Status must be between 100 and 599" = "Le statut doit être compris entre 100 et 599";
 "Stop" = "Arrêter";
@@ -239,6 +252,7 @@
 "URL" = "URL";
 "URL pattern" = "Motif d’URL";
 "URL pattern (e.g. ads.example.com/*)" = "Motif d’URL (p. ex. ads.example.com/*)";
+"Unpin" = "Désépingler";
 "Upload" = "Envoi";
 "Upload limit (kbit/s, 0 = unlimited)" = "Limite d’envoi (kbit/s, 0 = illimité)";
 "Use as System Proxy" = "Utiliser comme proxy système";

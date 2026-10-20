@@ -77,6 +77,8 @@ private struct Sidebar: View {
 
 private struct QuickFilterBar: View {
     @Bindable var model: AppModel
+    @State private var naming = false
+    @State private var filterName = ""
 
     var body: some View {
         HStack {
@@ -84,10 +86,40 @@ private struct QuickFilterBar: View {
                 ForEach(AppModel.QuickFilter.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().frame(width: 330)
+            Menu {
+                if model.hasActiveFilter { Button("Save Current Filter…") { naming = true } }
+                ForEach(model.savedFilters) { filter in
+                    Button(filter.name) { model.apply(filter) }
+                }
+                if !model.savedFilters.isEmpty {
+                    Divider()
+                    Menu("Delete Saved Filter") {
+                        ForEach(model.savedFilters) { filter in
+                            Button(filter.name, role: .destructive) { model.savedFilters.removeAll { $0.id == filter.id } }
+                        }
+                    }
+                }
+                if model.hasActiveFilter {
+                    Divider()
+                    Button("Clear Filter") { model.searchText = ""; model.quickFilter = .all; model.hostFilter = nil }
+                }
+            } label: {
+                Label("Saved Filters", systemImage: "line.3.horizontal.decrease.circle")
+            }
+            .menuStyle(.borderlessButton).fixedSize()
             Spacer()
             Text("\(model.visibleFlows.count) requests").font(.caption).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
+        .alert("Save Filter", isPresented: $naming) {
+            TextField("Name", text: $filterName)
+            Button("Save") {
+                let name = filterName.trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty { model.saveCurrentFilter(named: name) }
+                filterName = ""
+            }
+            Button("Cancel", role: .cancel) { filterName = "" }
+        }
     }
 }
 
@@ -104,10 +136,17 @@ extension AppModel.QuickFilter {
 
 private struct FlowTable: View {
     @Bindable var model: AppModel
+    @State private var columns = Self.loadColumns()
+
+    private static let columnsKey = "flowTableColumns"
+    private static func loadColumns() -> TableColumnCustomization<Flow> {
+        UserDefaults.standard.data(forKey: columnsKey).flatMap { try? JSONDecoder().decode(TableColumnCustomization<Flow>.self, from: $0) } ?? TableColumnCustomization<Flow>()
+    }
 
     var body: some View {
-        Table(model.visibleFlows, selection: $model.selection) {
-            TableColumn("#") { f in Text("\((model.flows.firstIndex { $0.id == f.id } ?? 0) + 1)").foregroundStyle(.secondary) }.width(40)
+        Table(model.visibleFlows, selection: $model.selection, columnCustomization: $columns) {
+            TableColumn("#") { f in Text("\((model.flows.firstIndex { $0.id == f.id } ?? 0) + 1)").foregroundStyle(.secondary) }
+                .width(40).customizationID("index")
             TableColumn("URL") { f in
                 HStack(spacing: 6) {
                     Image(systemName: icon(for: f)).foregroundStyle(f.isWebSocket ? Color.proxioAccent : .secondary).frame(width: 14)
@@ -115,19 +154,33 @@ private struct FlowTable: View {
                         Text(f.request.url.path.isEmpty ? "/" : f.request.url.path).lineLimit(1)
                         Text(f.request.url.host ?? "").font(.caption).foregroundStyle(.secondary)
                     }
+                    if model.pinned.contains(f.id) { Image(systemName: "pin.fill").font(.caption).foregroundStyle(Color.proxioAccent) }
                 }
             }
-            TableColumn("Method") { Text($0.request.method).bold() }.width(70)
+            .customizationID("url")
+            TableColumn("Method") { Text($0.request.method).bold() }.width(70).customizationID("method")
             TableColumn("Code") { f in
                 Text(f.response.map { String($0.status) } ?? "—").foregroundStyle(color(f.response?.status))
-            }.width(55)
-            TableColumn("Size") { Text($0.response.map { BodyFormatter.byteCount($0.body.count) } ?? "") }.width(70)
-            TableColumn("Time") { Text($0.duration > 0 ? "\(Int($0.duration * 1000)) ms" : "") }.width(70)
+            }
+            .width(55).customizationID("code")
+            TableColumn("Size") { Text($0.response.map { BodyFormatter.byteCount($0.body.count) } ?? "") }.width(70).customizationID("size")
+            TableColumn("Time") { Text($0.duration > 0 ? "\(Int($0.duration * 1000)) ms" : "") }.width(70).customizationID("time")
+            TableColumn("Content Type") { Text($0.response?.mimeType ?? "") }.customizationID("type").defaultVisibility(.hidden)
+            TableColumn("Protocol") { Text($0.response?.httpVersion ?? $0.request.httpVersion) }.width(70).customizationID("protocol").defaultVisibility(.hidden)
+            TableColumn("Started") { Text($0.startedAt.formatted(date: .omitted, time: .standard)) }.width(80).customizationID("started").defaultVisibility(.hidden)
+            TableColumn("Notes") { Text($0.notes.joined(separator: ", ")) }.customizationID("notes").defaultVisibility(.hidden)
+        }
+        .onChange(of: columns) { _, value in
+            UserDefaults.standard.set(try? JSONEncoder().encode(value), forKey: Self.columnsKey)
         }
         .contextMenu(forSelectionType: UUID.self) { ids in
             if ids.count == 2 {
                 Button("Compare") { model.selection = ids; model.showDiff = true }
-            } else if ids.count == 1, let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
+            }
+            if !ids.isEmpty {
+                Button(ids.isSubset(of: model.pinned) ? "Unpin" : "Pin") { model.togglePin(ids) }
+            }
+            if ids.count == 1, let id = ids.first, let flow = model.flows.first(where: { $0.id == id }) {
                 Button("Copy as cURL") { model.copyCURL(flow) }
                 if flow.request.method != "CONNECT" {
                     Button("Repeat") { model.repeatRequest(flow) }
@@ -137,6 +190,7 @@ private struct FlowTable: View {
                     Button("Map Local with This Response") { model.mapLocal(from: flow); model.showMapRules = true }
                 }
                 Button("Add Breakpoint for \(flow.request.url.host ?? "host")") { model.addBreakpoint(for: flow) }
+                Button("Block \(flow.request.url.host ?? "host")") { model.blockHost(of: flow) }
             }
         }
     }
