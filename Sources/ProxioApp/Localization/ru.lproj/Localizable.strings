@@ -3,12 +3,17 @@
 "%lld requests" = "Запросов: %lld";
 "(any)" = "(любой)";
 "(empty)" = "(пусто)";
+"1. Same Wi-Fi as this Mac. Settings → Wi-Fi → (i) → Configure Proxy → Manual: server and port as above.\n2. Open the setup address in Safari, download the profile and install it (Settings → Profile Downloaded).\n3. Settings → General → About → Certificate Trust Settings → trust “Proxio Root CA”." = "1. Тот же Wi-Fi, что и у этого Mac. Настройки → Wi-Fi → (i) → Настроить прокси → Вручную: сервер и порт, указанные выше.
+2. Откройте адрес настройки в Safari, загрузите профиль и установите его (Настройки → Профиль загружен).
+3. Настройки → Основные → Об этом устройстве → Доверие сертификатам → доверьте «Proxio Root CA».";
 "127.0.0.1:%lld" = "127.0.0.1:%lld";
 "2 requests selected" = "Выбрано 2 запроса";
 "Add" = "Добавить";
 "Add Breakpoint for %@" = "Добавить точку останова для %@";
 "All" = "Все";
 "All Traffic" = "Весь трафик";
+"Allow devices on this network" = "Разрешить устройства из этой сети";
+"Android" = "Android";
 "Answer matching requests with a file or text, without contacting the server." = "Отвечает на подходящие запросы файлом или текстом, не обращаясь к серверу.";
 "Any" = "Любой";
 "Binary" = "Двоичные";
@@ -23,6 +28,7 @@
 "Cancel" = "Отмена";
 "Cancel Request" = "Отменить запрос";
 "Certificate" = "Сертификат";
+"Certificate installed in booted simulators" = "Сертификат установлен в симуляторы";
 "Certificate trusted" = "Сертификат доверенный";
 "Choose…" = "Выбрать…";
 "Clear" = "Очистить";
@@ -36,6 +42,7 @@
 "Compose…" = "Составить…";
 "Console" = "Консоль";
 "Copy as cURL" = "Копировать как cURL";
+"Could not install in simulators: %@" = "Не удалось установить в симуляторы: %@";
 "Could not parse: %@" = "Не удалось разобрать: %@";
 "Could not save rules: %@" = "Не удалось сохранить правила: %@";
 "Could not start: %@" = "Не удалось запустить: %@";
@@ -66,6 +73,7 @@
 "Imported .proto files" = "Файлы .proto импортированы";
 "Include…" = "Включить…";
 "Inline" = "Встроенный";
+"Install Certificate in Booted Simulators" = "Установить сертификат в запущенные симуляторы";
 "Install and Trust" = "Установить и доверять";
 "Install and Trust…" = "Установить и доверять…";
 "Install…" = "Установить…";
@@ -73,7 +81,7 @@
 "Intercept HTTPS (decrypt traffic)" = "Перехватывать HTTPS (расшифровка трафика)";
 "It will no longer be trusted and will be deleted from your login keychain." = "Он перестанет быть доверенным и будет удалён из вашей связки ключей входа.";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Позволяет Proxio менять системный прокси без запроса пароля каждый раз. Он умеет только устанавливать 127.0.0.1 и восстанавливать прежнюю настройку.";
-"Listening on 127.0.0.1:%lld" = "Прослушивание на 127.0.0.1:%lld";
+"Listening on %@:%lld" = "Прослушивание на %@:%lld";
 "Map Local" = "Map Local";
 "Map Local / Remote" = "Map Local / Remote";
 "Map Local / Remote…" = "Map Local / Remote…";
@@ -85,12 +93,14 @@
 "Move to Keychain" = "Переместить в связку ключей";
 "Name" = "Имя";
 "Neither request has a response" = "Ни у одного запроса нет ответа";
+"Network" = "Сеть";
 "New script" = "Новый скрипт";
 "No Map Local rules" = "Нет правил Map Local";
 "No Map Remote rules" = "Нет правил Map Remote";
 "No breakpoints" = "Нет точек останова";
 "No console output yet" = "Вывода консоли пока нет";
 "No differences" = "Различий нет";
+"No network address found." = "Сетевой адрес не найден.";
 "No response yet" = "Ответа пока нет";
 "No scripts" = "Нет скриптов";
 "Not recording" = "Запись остановлена";
@@ -110,6 +120,7 @@
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio обнаружил закрытый ключ ЦС в виде обычного файла (ca-key.pem). Его можно хранить в связке ключей входа; после этого файл перезаписывается и удаляется.";
 "Proxio on GitHub" = "Proxio на GitHub";
+"Proxio then listens on all interfaces, but only answers devices on private networks (192.168.x.x, 10.x.x.x, 172.16–31.x.x). Restart the proxy after changing this." = "Proxio будет слушать на всех интерфейсах, но отвечает только устройствам из частных сетей (192.168.x.x, 10.x.x.x, 172.16–31.x.x). После изменения перезапустите прокси.";
 "Proxio will run:\n\n%@\n\nWhile it is trusted, anyone who can read the CA private key can impersonate any website to this Mac. macOS will ask for your password." = "Proxio выполнит:\n\n%@\n\nПока сертификат является доверенным, любой, кто может прочитать закрытый ключ ЦС, сможет выдавать себя за любой сайт на этом Mac. macOS запросит ваш пароль.";
 "Proxy" = "Прокси";
 "Proxy Settings…" = "Настройки прокси…";
@@ -132,6 +143,7 @@
 "Root certificate" = "Корневой сертификат";
 "Route %@ traffic through Proxio?" = "Направлять трафик %@ через Proxio?";
 "SSL proxying" = "SSL-проксирование";
+"Scan with the phone camera" = "Отсканируйте камерой телефона";
 "Scripting…" = "Скрипты…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Скрипты на JavaScript могут изменять подходящие запросы и ответы. Определите onRequest(request) и/или onResponse(request, response) и верните объект. Пишите короткие скрипты: скрипт, который не завершается, блокирует свой запрос.";
 "Select a message" = "Выберите сообщение";
@@ -142,14 +154,19 @@
 "Send" = "Отправить";
 "Send %lld×" = "Отправить %lld×";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Перенаправляет подходящие запросы на другую схему, хост, порт или путь. Пустые поля сохраняют исходное значение.";
+"Set Up Device…" = "Настроить устройство…";
 "Settings" = "Настройки";
 "Settings…" = "Настройки…";
 "Show Certificate in Finder" = "Показать сертификат в Finder";
+"Simulators" = "Симуляторы";
+"Simulators use this Mac’s proxy settings: turn on “Use as system proxy”, then install the certificate in the running simulators." = "Симуляторы используют прокси этого Mac: включите «Использовать как системный прокси», затем установите сертификат в запущенные симуляторы.";
 "Size" = "Размер";
 "Start" = "Запустить";
 "Start Recording" = "Начать запись";
 "Start line" = "Начальная строка";
 "Start the proxy" = "Запустить прокси";
+"Start the proxy to see the setup address." = "Запустите прокси, чтобы увидеть адрес настройки.";
+"Start the proxy with HTTPS interception first" = "Сначала запустите прокси с перехватом HTTPS";
 "Status" = "Статус";
 "Status must be between 100 and 599" = "Статус должен быть от 100 до 599";
 "Stop" = "Остановить";
@@ -163,10 +180,12 @@
 "The HTTP and HTTPS proxy of \"%@\" will be set to 127.0.0.1:%lld. Your current settings are saved and restored when you turn this off or stop the proxy." = "HTTP- и HTTPS-прокси для «%@» будет установлен на 127.0.0.1:%lld. Текущие настройки сохраняются и восстанавливаются при выключении или остановке прокси.";
 "The URL is not valid" = "Недопустимый URL";
 "The privileged helper is not part of this build, so macOS may ask for your password when the system proxy changes." = "Привилегированный помощник не входит в эту сборку, поэтому macOS может запрашивать пароль при изменении системного прокси.";
+"This Mac" = "Этот Mac";
 "Time" = "Время";
 "Tools" = "Инструменты";
 "Trust the Proxio root certificate?" = "Доверять корневому сертификату Proxio?";
 "Trusted on this Mac" = "Доверенный на этом Mac";
+"Turn on “Allow devices on this network” and start the proxy." = "Включите «Разрешить устройства из этой сети» и запустите прокси.";
 "Type" = "Тип";
 "URL" = "URL";
 "URL pattern" = "Шаблон URL";
@@ -174,10 +193,12 @@
 "Use as system proxy" = "Использовать как системный прокси";
 "Value" = "Значение";
 "WebSocket" = "WebSocket";
+"Wi-Fi → modify network → Proxy: Manual with the server and port above. Open the setup address and install the CA certificate. Apps that ignore user certificates stay opaque." = "Wi-Fi → изменить сеть → Прокси: вручную, сервер и порт указаны выше. Откройте адрес настройки и установите сертификат ЦС. Приложения, игнорирующие пользовательские сертификаты, останутся непрозрачными.";
 "decoded" = "декодировано";
 "host" = "хост";
 "host/path pattern" = "шаблон host/путь";
 "host/path pattern, * allowed" = "шаблон host/путь, допускается *";
+"iPhone / iPad" = "iPhone / iPad";
 "inline" = "встроенный";
 "path" = "путь";
 "port" = "порт";

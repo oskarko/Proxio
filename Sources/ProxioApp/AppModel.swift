@@ -26,6 +26,9 @@ final class AppModel {
     var showScripting = false
     var helperState: HelperState = HelperInstaller().state
     var showDiff = false
+    var showMobile = false
+    /// Listen on all interfaces so phones on the same network can use the proxy.
+    var allowLAN = false
     /// Bumped when the imported schemas change so the inspector re-renders.
     var selectionRevision = 0
 
@@ -159,11 +162,12 @@ final class AppModel {
         do {
             ca = interceptHTTPS ? try CertificateAuthority.loadOrCreate(confirmMigration: confirmKeyMigration) : nil
             applyRules()
-            let server = try ProxyServer(store: store, port: port, ca: ca, sslProxying: policy, rules: rules)
+            let host = allowLAN ? "0.0.0.0" : "127.0.0.1"
+            let server = try ProxyServer(store: store, host: host, port: port, ca: ca, sslProxying: policy, rules: rules)
             port = try await server.start()
             self.server = server
             isRunning = true
-            status = String(localized: "Listening on 127.0.0.1:\(port)") + (interceptHTTPS ? " · " + String(localized: "HTTPS interception on") : "")
+            status = String(localized: "Listening on \(host):\(port)") + (interceptHTTPS ? " · " + String(localized: "HTTPS interception on") : "")
             await refreshSystemState()
         } catch {
             status = String(localized: "Could not start: \(error.localizedDescription)")
@@ -206,6 +210,28 @@ final class AppModel {
         let snapshot = flows
         do { try HARExporter.export(snapshot).write(to: url) }
         catch { status = String(localized: "Export failed: \(error.localizedDescription)") }
+    }
+
+    /// `simctl keychain booted add-root-cert`: the simulators' trust store, not the Mac's.
+    func installCAInSimulators() async {
+        let pem = caURL.path
+        guard FileManager.default.fileExists(atPath: pem) else {
+            status = String(localized: "Start the proxy with HTTPS interception first")
+            return
+        }
+        let result: (Int32, String) = await Task.detached {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+            p.arguments = ["simctl", "keychain", "booted", "add-root-cert", pem]
+            let pipe = Pipe()
+            p.standardError = pipe; p.standardOutput = pipe
+            do { try p.run() } catch { return (-1, error.localizedDescription) }
+            p.waitUntilExit()
+            return (p.terminationStatus, String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+        }.value
+        status = result.0 == 0
+            ? String(localized: "Certificate installed in booted simulators")
+            : String(localized: "Could not install in simulators: \(result.1.trimmingCharacters(in: .whitespacesAndNewlines))")
     }
 
     func importProtos() {

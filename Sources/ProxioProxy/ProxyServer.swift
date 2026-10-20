@@ -43,11 +43,16 @@ public final class ProxyServer: @unchecked Sendable {
     @discardableResult
     public func start() async throws -> Int {
         let environment = self.environment
+        let loopbackOnly = host == "127.0.0.1" || host == "localhost" || host == "::1"
         let bootstrap = ServerBootstrap(group: group)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
-                channel.pipeline.addHandlers([
+                // A proxy reachable from the network only serves private-network peers, never the open internet.
+                if !loopbackOnly, let ip = channel.remoteAddress?.ipAddress, !LocalNetwork.isPrivate(ipv4: ip) {
+                    return channel.close()
+                }
+                return channel.pipeline.addHandlers([
                     ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)),
                     HTTPResponseEncoder(),
                     HTTPServerPipelineHandler(),

@@ -103,6 +103,15 @@ public final class CertificateAuthority: @unchecked Sendable {
     /// Plaintext PEM of the key; only used to build legacy layouts in tests.
     var rootKeyPEM: String { key.pemRepresentation }
 
+    /// The root certificate in DER form (what Android and iOS profiles embed).
+    public var rootCertificateDER: Data {
+        get throws {
+            var serializer = DER.Serializer()
+            try serializer.serialize(certificate)
+            return Data(serializer.serializedBytes)
+        }
+    }
+
     public var rootCertificatePEM: String {
         get throws { try certificate.serializeAsPEM().pemString }
     }

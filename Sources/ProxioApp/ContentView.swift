@@ -25,6 +25,7 @@ struct ContentView: View {
         .toolbar { MainToolbar(model: model) }
         .safeAreaInset(edge: .bottom) { StatusBar(model: model) }
         .sheet(isPresented: $model.showSetup) { SetupView(model: model) }
+        .sheet(isPresented: $model.showMobile) { MobileSetupView(model: model) }
         .sheet(isPresented: Binding(get: { model.composeDraft != nil }, set: { if !$0 { model.composeDraft = nil } })) {
             ComposeView(model: model)
         }

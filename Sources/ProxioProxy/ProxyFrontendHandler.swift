@@ -156,6 +156,10 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
 
     /// Builds the request record, lets breakpoints edit it, then sends it upstream.
     private func forward(context: ChannelHandlerContext, head: HTTPRequestHead) {
+        if SetupSite.isSetupRequest(uri: head.uri, tunnel: tunnel != nil) {
+            // Addressed to the proxy itself: answer with the setup site and keep it out of the captured traffic.
+            return ResponseWriter.write(SetupSite.respond(path: head.uri, ca: env.ca), to: context.channel, keepAlive: keepAlive)
+        }
         let url: URL
         if let tunnel {
             let authority = tunnel.port == 443 ? tunnel.host : "\(tunnel.host):\(tunnel.port)"

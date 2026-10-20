@@ -58,3 +58,7 @@ Changing the system proxy with `networksetup` makes macOS ask for authorization.
 The UI follows the familiar three-panel layout (quick filters, flow table, request/response inspector, Tools menu) with a teal accent and an anchor icon (`scripts/make-icon.sh` regenerates it). It is available in English, Spanish, Russian and French, following the system language. English strings are the keys; translations live in `scripts/l10n-catalog.py`, which writes `Sources/ProxioApp/Localization/*.lproj` and fails if a string in the UI has no translation (`python3 scripts/l10n-catalog.py --check`).
 
 URL patterns are `host[:port]/path?query` globs with `*` (`api.example.com/v1/*`); a bare host matches every path. Rules are saved to `~/Library/Application Support/Proxio/rules.json` and reloaded on launch (an unreadable file is moved to `rules.json.bak`, never overwritten). Bodies sent with `Content-Encoding` gzip, deflate or brotli are shown and exported to HAR decoded; the capture itself keeps the original bytes. HTTPS rules need interception enabled and the host not excluded.
+
+## Mobile devices
+
+Tools → **Set Up Device…** (⇧⌘I) turns on "Allow devices on this network" (the proxy listens on `0.0.0.0` but only answers private-range peers), shows the Mac's LAN address with a QR code, and the steps for iOS/Android. The built-in setup site at `http://<mac-ip>:<port>/` serves the CA as PEM/DER and as an Apple `.mobileconfig` profile. A button installs the CA into booted iOS simulators (`xcrun simctl keychain booted add-root-cert`).

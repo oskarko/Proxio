@@ -36,6 +36,8 @@ struct ProxioApp: App {
                 Button("Breakpoints…") { model.showBreakpoints = true }.keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Map Local / Remote…") { model.showMapRules = true }.keyboardShortcut("m", modifiers: [.command, .shift])
                 Button("Scripting…") { model.showScripting = true }.keyboardShortcut("j", modifiers: [.command, .shift])
+                Button("Set Up Device…") { model.showMobile = true }.keyboardShortcut("i", modifiers: [.command, .shift])
+                Divider()
                 Button("Import .proto Files…") { model.importProtos() }
                 Button("Remove Imported .proto Files") { model.clearProtos() }
                 Divider()

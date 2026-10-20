@@ -3,12 +3,17 @@
 "%lld requests" = "%lld peticiones";
 "(any)" = "(cualquiera)";
 "(empty)" = "(vacío)";
+"1. Same Wi-Fi as this Mac. Settings → Wi-Fi → (i) → Configure Proxy → Manual: server and port as above.\n2. Open the setup address in Safari, download the profile and install it (Settings → Profile Downloaded).\n3. Settings → General → About → Certificate Trust Settings → trust “Proxio Root CA”." = "1. La misma Wi-Fi que este Mac. Ajustes → Wi-Fi → (i) → Configurar proxy → Manual: servidor y puerto de arriba.
+2. Abre la dirección de configuración en Safari, descarga el perfil e instálalo (Ajustes → Perfil descargado).
+3. Ajustes → General → Información → Ajustes de confianza de certificados → confía en «Proxio Root CA».";
 "127.0.0.1:%lld" = "127.0.0.1:%lld";
 "2 requests selected" = "2 peticiones seleccionadas";
 "Add" = "Añadir";
 "Add Breakpoint for %@" = "Añadir punto de interrupción para %@";
 "All" = "Todo";
 "All Traffic" = "Todo el tráfico";
+"Allow devices on this network" = "Permitir dispositivos de esta red";
+"Android" = "Android";
 "Answer matching requests with a file or text, without contacting the server." = "Responde a las peticiones coincidentes con un archivo o texto, sin contactar con el servidor.";
 "Any" = "Cualquiera";
 "Binary" = "Binario";
@@ -23,6 +28,7 @@
 "Cancel" = "Cancelar";
 "Cancel Request" = "Cancelar petición";
 "Certificate" = "Certificado";
+"Certificate installed in booted simulators" = "Certificado instalado en los simuladores";
 "Certificate trusted" = "Certificado de confianza";
 "Choose…" = "Elegir…";
 "Clear" = "Limpiar";
@@ -36,6 +42,7 @@
 "Compose…" = "Redactar…";
 "Console" = "Consola";
 "Copy as cURL" = "Copiar como cURL";
+"Could not install in simulators: %@" = "No se pudo instalar en simuladores: %@";
 "Could not parse: %@" = "No se pudo analizar: %@";
 "Could not save rules: %@" = "No se pudieron guardar las reglas: %@";
 "Could not start: %@" = "No se pudo iniciar: %@";
@@ -66,6 +73,7 @@
 "Imported .proto files" = "Archivos .proto importados";
 "Include…" = "Incluir…";
 "Inline" = "En línea";
+"Install Certificate in Booted Simulators" = "Instalar certificado en simuladores en ejecución";
 "Install and Trust" = "Instalar y confiar";
 "Install and Trust…" = "Instalar y confiar…";
 "Install…" = "Instalar…";
@@ -73,7 +81,7 @@
 "Intercept HTTPS (decrypt traffic)" = "Interceptar HTTPS (descifrar tráfico)";
 "It will no longer be trusted and will be deleted from your login keychain." = "Dejará de ser de confianza y se eliminará de tu llavero de inicio de sesión.";
 "Lets Proxio change the system proxy without asking for your password each time. It can only set 127.0.0.1 and restore the previous setting." = "Permite a Proxio cambiar el proxy del sistema sin pedir tu contraseña cada vez. Solo puede establecer 127.0.0.1 y restaurar el ajuste anterior.";
-"Listening on 127.0.0.1:%lld" = "Escuchando en 127.0.0.1:%lld";
+"Listening on %@:%lld" = "Escuchando en %@:%lld";
 "Map Local" = "Map Local";
 "Map Local / Remote" = "Map Local / Remote";
 "Map Local / Remote…" = "Map Local / Remote…";
@@ -85,12 +93,14 @@
 "Move to Keychain" = "Mover al llavero";
 "Name" = "Nombre";
 "Neither request has a response" = "Ninguna petición tiene respuesta";
+"Network" = "Red";
 "New script" = "Nuevo script";
 "No Map Local rules" = "Sin reglas Map Local";
 "No Map Remote rules" = "Sin reglas Map Remote";
 "No breakpoints" = "Sin puntos de interrupción";
 "No console output yet" = "Aún no hay salida de consola";
 "No differences" = "Sin diferencias";
+"No network address found." = "No se encontró ninguna dirección de red.";
 "No response yet" = "Aún sin respuesta";
 "No scripts" = "Sin scripts";
 "Not recording" = "Sin grabar";
@@ -110,6 +120,7 @@
 "Proxio" = "Proxio";
 "Proxio found its CA private key as a plaintext file (ca-key.pem). It can be stored in your login keychain instead; the file is then overwritten and deleted." = "Proxio encontró su clave privada de CA como archivo de texto plano (ca-key.pem). Puede guardarse en tu llavero de inicio de sesión; después el archivo se sobrescribe y se elimina.";
 "Proxio on GitHub" = "Proxio en GitHub";
+"Proxio then listens on all interfaces, but only answers devices on private networks (192.168.x.x, 10.x.x.x, 172.16–31.x.x). Restart the proxy after changing this." = "Proxio escuchará en todas las interfaces, pero solo responde a dispositivos de redes privadas (192.168.x.x, 10.x.x.x, 172.16–31.x.x). Reinicia el proxy tras cambiarlo.";
 "Proxio will run:\n\n%@\n\nWhile it is trusted, anyone who can read the CA private key can impersonate any website to this Mac. macOS will ask for your password." = "Proxio ejecutará:\n\n%@\n\nMientras sea de confianza, cualquiera que pueda leer la clave privada de la CA puede suplantar cualquier sitio web en este Mac. macOS pedirá tu contraseña.";
 "Proxy" = "Proxy";
 "Proxy Settings…" = "Ajustes del proxy…";
@@ -132,6 +143,7 @@
 "Root certificate" = "Certificado raíz";
 "Route %@ traffic through Proxio?" = "¿Dirigir el tráfico de %@ por Proxio?";
 "SSL proxying" = "Proxy SSL";
+"Scan with the phone camera" = "Escanea con la cámara del móvil";
 "Scripting…" = "Scripts…";
 "Scripts can change matching requests and responses with JavaScript. Define onRequest(request) and/or onResponse(request, response) and return the object. Keep scripts short: a script that never returns blocks its request." = "Los scripts pueden modificar con JavaScript las peticiones y respuestas coincidentes. Define onRequest(request) y/o onResponse(request, response) y devuelve el objeto. Mantén los scripts cortos: uno que nunca termina bloquea su petición.";
 "Select a message" = "Selecciona un mensaje";
@@ -142,14 +154,19 @@
 "Send" = "Enviar";
 "Send %lld×" = "Enviar %lld×";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Envía las peticiones coincidentes a otro esquema, host, puerto o ruta. Los campos vacíos conservan el original.";
+"Set Up Device…" = "Configurar dispositivo…";
 "Settings" = "Ajustes";
 "Settings…" = "Ajustes…";
 "Show Certificate in Finder" = "Mostrar certificado en el Finder";
+"Simulators" = "Simuladores";
+"Simulators use this Mac’s proxy settings: turn on “Use as system proxy”, then install the certificate in the running simulators." = "Los simuladores usan el proxy de este Mac: activa «Usar como proxy del sistema» e instala el certificado en los simuladores en ejecución.";
 "Size" = "Tamaño";
 "Start" = "Iniciar";
 "Start Recording" = "Iniciar grabación";
 "Start line" = "Línea inicial";
 "Start the proxy" = "Iniciar el proxy";
+"Start the proxy to see the setup address." = "Inicia el proxy para ver la dirección de configuración.";
+"Start the proxy with HTTPS interception first" = "Inicia antes el proxy con intercepción HTTPS";
 "Status" = "Estado";
 "Status must be between 100 and 599" = "El estado debe estar entre 100 y 599";
 "Stop" = "Detener";
@@ -163,10 +180,12 @@
 "The HTTP and HTTPS proxy of \"%@\" will be set to 127.0.0.1:%lld. Your current settings are saved and restored when you turn this off or stop the proxy." = "El proxy HTTP y HTTPS de «%@» se establecerá en 127.0.0.1:%lld. Tus ajustes actuales se guardan y se restauran al desactivarlo o detener el proxy.";
 "The URL is not valid" = "La URL no es válida";
 "The privileged helper is not part of this build, so macOS may ask for your password when the system proxy changes." = "El asistente privilegiado no forma parte de esta compilación, así que macOS puede pedir tu contraseña al cambiar el proxy del sistema.";
+"This Mac" = "Este Mac";
 "Time" = "Tiempo";
 "Tools" = "Herramientas";
 "Trust the Proxio root certificate?" = "¿Confiar en el certificado raíz de Proxio?";
 "Trusted on this Mac" = "De confianza en este Mac";
+"Turn on “Allow devices on this network” and start the proxy." = "Activa «Permitir dispositivos de esta red» e inicia el proxy.";
 "Type" = "Tipo";
 "URL" = "URL";
 "URL pattern" = "Patrón de URL";
@@ -174,10 +193,12 @@
 "Use as system proxy" = "Usar como proxy del sistema";
 "Value" = "Valor";
 "WebSocket" = "WebSocket";
+"Wi-Fi → modify network → Proxy: Manual with the server and port above. Open the setup address and install the CA certificate. Apps that ignore user certificates stay opaque." = "Wi-Fi → modificar red → Proxy: Manual con el servidor y puerto de arriba. Abre la dirección de configuración e instala el certificado de la CA. Las apps que ignoran los certificados de usuario siguen siendo opacas.";
 "decoded" = "decodificado";
 "host" = "host";
 "host/path pattern" = "patrón host/ruta";
 "host/path pattern, * allowed" = "patrón host/ruta, se permite *";
+"iPhone / iPad" = "iPhone / iPad";
 "inline" = "en línea";
 "path" = "ruta";
 "port" = "puerto";
