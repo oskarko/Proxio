@@ -19,6 +19,7 @@
 "Anonymous operation" = "Anonymous operation";
 "Answer matching requests with a file or text, without contacting the server." = "Answer matching requests with a file or text, without contacting the server.";
 "Any" = "Any";
+"Authentication" = "Authentication";
 "Binary" = "Binary";
 "Block List" = "Block List";
 "Block, Allow, DNS & Bypass…" = "Block, Allow, DNS & Bypass…";
@@ -42,6 +43,7 @@
 "Clear session" = "Clear session";
 "Close" = "Close";
 "Code" = "Code";
+"Comma-separated, wildcards allowed. Loopback addresses always go direct." = "Comma-separated, wildcards allowed. Loopback addresses always go direct.";
 "Compare" = "Compare";
 "Compare Selected" = "Compare Selected";
 "Compose" = "Compose";
@@ -61,6 +63,7 @@
 "DNS Spoofing" = "DNS Spoofing";
 "Data" = "Data";
 "Different" = "Different";
+"Direct connections" = "Direct connections";
 "Domains" = "Domains";
 "Done" = "Done";
 "Download" = "Download";
@@ -75,6 +78,7 @@
 "Execute" = "Execute";
 "Export as HAR…" = "Export as HAR…";
 "Export failed: %@" = "Export failed: %@";
+"External Proxy…" = "External Proxy…";
 "Fast 3G" = "Fast 3G";
 "File" = "File";
 "Filter by URL, method, status or type" = "Filter by URL, method, status or type";
@@ -87,8 +91,10 @@
 "Headers (Name: value, one per line)" = "Headers (Name: value, one per line)";
 "Helper change failed: %@" = "Helper change failed: %@";
 "Hex" = "Hex";
+"Host" = "Host";
 "Host (e.g. *.apple.com)" = "Host (e.g. *.apple.com)";
 "Host (e.g. api.example.com)" = "Host (e.g. api.example.com)";
+"Hosts that skip the proxy" = "Hosts that skip the proxy";
 "Identical" = "Identical";
 "Import .proto Files…" = "Import .proto Files…";
 "Import HAR…" = "Import HAR…";
@@ -139,6 +145,7 @@
 "Only changes" = "Only changes";
 "Open Login Items…" = "Open Login Items…";
 "Open Session…" = "Open Session…";
+"Password" = "Password";
 "Path" = "Path";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -187,7 +194,9 @@
 "Select two requests to compare them" = "Select two requests to compare them";
 "Send" = "Send";
 "Send %lld×" = "Send %lld×";
+"Send Proxio's outgoing traffic through another HTTP proxy. Every connection uses a CONNECT tunnel, so the proxy must allow CONNECT to the ports you use." = "Send Proxio's outgoing traffic through another HTTP proxy. Every connection uses a CONNECT tunnel, so the proxy must allow CONNECT to the ports you use.";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Send matching requests to a different scheme, host, port or path. Empty fields keep the original.";
+"Server" = "Server";
 "Session saved" = "Session saved";
 "Set Up Device…" = "Set Up Device…";
 "Settings" = "Settings";
@@ -232,6 +241,8 @@
 "Upload limit (kbit/s, 0 = unlimited)" = "Upload limit (kbit/s, 0 = unlimited)";
 "Use as System Proxy" = "Use as System Proxy";
 "Use as system proxy" = "Use as system proxy";
+"Use external proxy" = "Use external proxy";
+"Username" = "Username";
 "Value" = "Value";
 "Variables" = "Variables";
 "Wait" = "Wait";

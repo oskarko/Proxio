@@ -21,6 +21,7 @@
 "Anonymous operation" = "Opération anonyme";
 "Answer matching requests with a file or text, without contacting the server." = "Répond aux requêtes correspondantes avec un fichier ou du texte, sans contacter le serveur.";
 "Any" = "Tous";
+"Authentication" = "Authentification";
 "Binary" = "Binaire";
 "Block List" = "Liste de blocage";
 "Block, Allow, DNS & Bypass…" = "Blocage, autorisations, DNS et contournement…";
@@ -44,6 +45,7 @@
 "Clear session" = "Effacer la session";
 "Close" = "Fermeture";
 "Code" = "Code";
+"Comma-separated, wildcards allowed. Loopback addresses always go direct." = "Séparés par des virgules, jokers autorisés. Les adresses loopback passent toujours en direct.";
 "Compare" = "Comparer";
 "Compare Selected" = "Comparer la sélection";
 "Compose" = "Composer";
@@ -63,6 +65,7 @@
 "DNS Spoofing" = "Usurpation DNS";
 "Data" = "Données";
 "Different" = "Différentes";
+"Direct connections" = "Connexions directes";
 "Domains" = "Domaines";
 "Done" = "Terminé";
 "Download" = "Téléchargement";
@@ -77,6 +80,7 @@
 "Execute" = "Exécuter";
 "Export as HAR…" = "Exporter en HAR…";
 "Export failed: %@" = "Échec de l’export : %@";
+"External Proxy…" = "Proxy externe…";
 "Fast 3G" = "3G rapide";
 "File" = "Fichier";
 "Filter by URL, method, status or type" = "Filtrer par URL, méthode, statut ou type";
@@ -89,8 +93,10 @@
 "Headers (Name: value, one per line)" = "En-têtes (Nom : valeur, un par ligne)";
 "Helper change failed: %@" = "Échec de la modification de l’assistant : %@";
 "Hex" = "Hex";
+"Host" = "Hôte";
 "Host (e.g. *.apple.com)" = "Hôte (p. ex. *.apple.com)";
 "Host (e.g. api.example.com)" = "Hôte (p. ex. api.example.com)";
+"Hosts that skip the proxy" = "Hôtes sans proxy";
 "Identical" = "Identiques";
 "Import .proto Files…" = "Importer des fichiers .proto…";
 "Import HAR…" = "Importer un HAR…";
@@ -141,6 +147,7 @@
 "Only changes" = "Modifications seules";
 "Open Login Items…" = "Ouvrir les éléments de connexion…";
 "Open Session…" = "Ouvrir une session…";
+"Password" = "Mot de passe";
 "Path" = "Chemin";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -189,7 +196,9 @@
 "Select two requests to compare them" = "Sélectionnez deux requêtes à comparer";
 "Send" = "Envoyer";
 "Send %lld×" = "Envoyer %lld×";
+"Send Proxio's outgoing traffic through another HTTP proxy. Every connection uses a CONNECT tunnel, so the proxy must allow CONNECT to the ports you use." = "Envoie le trafic sortant de Proxio via un autre proxy HTTP. Chaque connexion utilise un tunnel CONNECT : le proxy doit donc autoriser CONNECT vers les ports utilisés.";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Envoie les requêtes correspondantes vers un autre schéma, hôte, port ou chemin. Les champs vides conservent la valeur d’origine.";
+"Server" = "Serveur";
 "Session saved" = "Session enregistrée";
 "Set Up Device…" = "Configurer un appareil…";
 "Settings" = "Réglages";
@@ -234,6 +243,8 @@
 "Upload limit (kbit/s, 0 = unlimited)" = "Limite d’envoi (kbit/s, 0 = illimité)";
 "Use as System Proxy" = "Utiliser comme proxy système";
 "Use as system proxy" = "Utiliser comme proxy système";
+"Use external proxy" = "Utiliser un proxy externe";
+"Username" = "Nom d'utilisateur";
 "Value" = "Valeur";
 "Variables" = "Variables";
 "Wait" = "Attente";

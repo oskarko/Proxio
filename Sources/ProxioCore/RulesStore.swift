@@ -10,8 +10,10 @@ public struct RulesDocument: Codable, Sendable, Equatable {
     public var allowList: [AccessRule] = []
     public var dns: [DNSRule] = []
     public var bypass: [BypassRule] = []
+    public var externalProxy = ExternalProxy()
     public init(breakpoints: [Breakpoint] = [], mapLocal: [MapLocalRule] = [], mapRemote: [MapRemoteRule] = [], scripts: [ProxioScript] = [],
-                blockList: [AccessRule] = [], allowList: [AccessRule] = [], dns: [DNSRule] = [], bypass: [BypassRule] = []) {
+                blockList: [AccessRule] = [], allowList: [AccessRule] = [], dns: [DNSRule] = [], bypass: [BypassRule] = [], externalProxy: ExternalProxy = ExternalProxy()) {
+        self.externalProxy = externalProxy
         self.blockList = blockList
         self.allowList = allowList
         self.dns = dns
@@ -33,6 +35,7 @@ public struct RulesDocument: Codable, Sendable, Equatable {
         allowList = try c.decodeIfPresent([AccessRule].self, forKey: .allowList) ?? []
         dns = try c.decodeIfPresent([DNSRule].self, forKey: .dns) ?? []
         bypass = try c.decodeIfPresent([BypassRule].self, forKey: .bypass) ?? []
+        externalProxy = try c.decodeIfPresent(ExternalProxy.self, forKey: .externalProxy) ?? ExternalProxy()
     }
 }
 

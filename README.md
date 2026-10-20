@@ -76,6 +76,9 @@ File → **Save Session…** (⌘S) writes every flow, byte-exact, to a `.proxio
 
 Tools → **Network Conditions…** (⇧⌘T) simulates a slow or dead connection for everything going through the proxy: presets (Edge, Slow/Fast 3G, 4G/LTE, Poor Wi-Fi, Offline) or custom latency and download/upload limits. It paces the client-side bytes in both directions (so it also covers HTTPS tunnels and HTTP/2), applies live without restarting, and is never persisted. A status-bar badge shows when it is active.
 
+## External proxy
+Tools → External Proxy… chains Proxio through another HTTP proxy (host, port, optional Basic credentials; the password is kept in the Keychain, not in the rules file). Everything leaves through a `CONNECT` tunnel, including plain HTTP, so the proxy must allow CONNECT to those ports. A comma-separated list of hosts skips the proxy; loopback always goes direct. SOCKS and PAC files are not supported.
+
 ## Block, Allow, DNS and Bypass
 
 Tools → **Block, Allow, DNS & Bypass…** (⇧⌘L), all persisted with the other rules:

@@ -174,6 +174,7 @@ public final class TrafficRules: @unchecked Sendable {
     private var _allow: [AccessRule] = []
     private var _dns: [DNSRule] = []
     private var _bypass: [BypassRule] = []
+    private var _external = ExternalProxy()
     public let scriptEngine = ScriptEngine()
 
     public init() {}
@@ -211,6 +212,16 @@ public final class TrafficRules: @unchecked Sendable {
     public var dnsRules: [DNSRule] {
         get { lock.withLock { _dns } }
         set { lock.withLock { _dns = newValue } }
+    }
+
+    public var externalProxy: ExternalProxy {
+        get { lock.withLock { _external } }
+        set { lock.withLock { _external = newValue } }
+    }
+
+    /// The external proxy to dial for `host`, or nil to connect directly.
+    public func externalProxy(for host: String) -> ExternalProxy? {
+        lock.withLock { _external.applies(to: host) ? _external : nil }
     }
 
     public var bypassRules: [BypassRule] {

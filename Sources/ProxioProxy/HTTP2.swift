@@ -176,38 +176,37 @@ enum UpstreamConnection {
 
     private static func connect(_ t: Target, env: ProxyEnvironment, loop: EventLoop, delegate: UpstreamDelegate) {
         let began = Date()
-        ClientBootstrap(group: loop)
-            .channelInitializer { channel in
-                channel.eventLoop.makeCompletedFuture {
-                    if t.tls {
-                        let ssl = try NIOSSLClientHandler(
-                            context: env.upstreamH2SSLContext,
-                            serverHostname: ProxyFrontendHandler.isIPAddress(t.host) ? nil : t.host
-                        )
-                        let alpn = ApplicationProtocolNegotiationHandler { result, channel in
-                            if case .negotiated(let protocolName) = result, protocolName == "h2" {
-                                return channel.configureHTTP2Pipeline(mode: .client, inboundStreamInitializer: nil).map { multiplexer in
-                                    let conn = UpstreamPool.H2Connection(channel: channel, multiplexer: multiplexer)
-                                    env.pool.register(t.key, conn)
-                                    delegate.upstreamConnected(after: Date().timeIntervalSince(began))
-                                    sendHTTP2(t, on: conn, env: env, delegate: delegate)
-                                }
-                            }
-                            return installHTTP1(on: channel).map { handler in
-                                delegate.upstreamConnected(after: Date().timeIntervalSince(began))
-                                sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
-                            }
-                        }
-                        try channel.pipeline.syncOperations.addHandlers([ssl, alpn])
-                    }
-                }
-            }
-            .connect(host: t.connectHost, port: t.port)
+        UpstreamDialer.dial(host: t.connectHost, port: t.port, via: env.rules.externalProxy(for: t.host), loop: loop)
             .whenComplete { result in
                 switch result {
                 case .failure(let error): delegate.upstreamFailed(error)
                 case .success(let channel):
-                    if !t.tls {
+                    if t.tls {
+                        do {
+                            let ssl = try NIOSSLClientHandler(
+                                context: env.upstreamH2SSLContext,
+                                serverHostname: ProxyFrontendHandler.isIPAddress(t.host) ? nil : t.host
+                            )
+                            let alpn = ApplicationProtocolNegotiationHandler { result, channel in
+                                if case .negotiated(let protocolName) = result, protocolName == "h2" {
+                                    return channel.configureHTTP2Pipeline(mode: .client, inboundStreamInitializer: nil).map { multiplexer in
+                                        let conn = UpstreamPool.H2Connection(channel: channel, multiplexer: multiplexer)
+                                        env.pool.register(t.key, conn)
+                                        delegate.upstreamConnected(after: Date().timeIntervalSince(began))
+                                        sendHTTP2(t, on: conn, env: env, delegate: delegate)
+                                    }
+                                }
+                                return installHTTP1(on: channel).map { handler in
+                                    delegate.upstreamConnected(after: Date().timeIntervalSince(began))
+                                    sendHTTP1(t, on: handler, reused: false, env: env, delegate: delegate)
+                                }
+                            }
+                            try channel.pipeline.syncOperations.addHandlers([ssl, alpn])
+                        } catch {
+                            channel.close(promise: nil)
+                            delegate.upstreamFailed(error)
+                        }
+                    } else {
                         installHTTP1(on: channel).whenComplete {
                             switch $0 {
                             case .success(let handler):

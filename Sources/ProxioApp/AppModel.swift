@@ -66,6 +66,16 @@ final class AppModel {
     var dnsRules: [DNSRule] = [] { didSet { rules.dnsRules = dnsRules; scheduleSave() } }
     var bypassRules: [BypassRule] = [] { didSet { rules.bypassRules = bypassRules; scheduleSave() } }
     var showAccess = false
+    var showExternalProxy = false
+    var externalProxy = ExternalProxy() {
+        didSet {
+            rules.externalProxy = externalProxy
+            if externalProxy.password != oldValue.password || externalProxy.username != oldValue.username {
+                ProxyPasswordStore.save(externalProxy.password, account: externalProxy.username)
+            }
+            scheduleSave()
+        }
+    }
     /// Recent `console.log` output from scripts, newest last.
     var scriptLog: [String] = []
 
@@ -99,6 +109,9 @@ final class AppModel {
         allowList = saved.allowList
         dnsRules = saved.dns
         bypassRules = saved.bypass
+        var chained = saved.externalProxy
+        chained.password = ProxyPasswordStore.load(account: chained.username)
+        externalProxy = chained
         // didSet observers do not run inside init, so hand the loaded rules to the proxy explicitly.
         rules.breakpoints = saved.breakpoints
         rules.mapLocalRules = saved.mapLocal
@@ -108,6 +121,7 @@ final class AppModel {
         rules.allowRules = saved.allowList
         rules.dnsRules = saved.dns
         rules.bypassRules = saved.bypass
+        rules.externalProxy = chained
         rules.scriptEngine.onLog = { [weak self] name, text in
             Task { @MainActor in
                 guard let self else { return }
@@ -127,7 +141,7 @@ final class AppModel {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard !Task.isCancelled, let self else { return }
             do {
-                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules, scripts: scripts, blockList: blockList, allowList: allowList, dns: dnsRules, bypass: bypassRules))
+                try rulesStore.save(RulesDocument(breakpoints: breakpoints, mapLocal: mapLocalRules, mapRemote: mapRemoteRules, scripts: scripts, blockList: blockList, allowList: allowList, dns: dnsRules, bypass: bypassRules, externalProxy: externalProxy))
             } catch { status = String(localized: "Could not save rules: \(error.localizedDescription)") }
         }
     }

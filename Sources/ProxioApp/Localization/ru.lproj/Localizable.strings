@@ -21,6 +21,7 @@
 "Anonymous operation" = "Анонимная операция";
 "Answer matching requests with a file or text, without contacting the server." = "Отвечает на подходящие запросы файлом или текстом, не обращаясь к серверу.";
 "Any" = "Любой";
+"Authentication" = "Аутентификация";
 "Binary" = "Двоичные";
 "Block List" = "Список блокировки";
 "Block, Allow, DNS & Bypass…" = "Блокировка, разрешения, DNS и обход…";
@@ -44,6 +45,7 @@
 "Clear session" = "Очистить сеанс";
 "Close" = "Закрытие";
 "Code" = "Код";
+"Comma-separated, wildcards allowed. Loopback addresses always go direct." = "Через запятую, допустимы подстановочные знаки. Loopback-адреса всегда идут напрямую.";
 "Compare" = "Сравнить";
 "Compare Selected" = "Сравнить выбранное";
 "Compose" = "Составить";
@@ -63,6 +65,7 @@
 "DNS Spoofing" = "Подмена DNS";
 "Data" = "Данные";
 "Different" = "Различаются";
+"Direct connections" = "Прямые соединения";
 "Domains" = "Домены";
 "Done" = "Готово";
 "Download" = "Загрузка";
@@ -77,6 +80,7 @@
 "Execute" = "Выполнить";
 "Export as HAR…" = "Экспортировать как HAR…";
 "Export failed: %@" = "Ошибка экспорта: %@";
+"External Proxy…" = "Внешний прокси…";
 "Fast 3G" = "Быстрый 3G";
 "File" = "Файл";
 "Filter by URL, method, status or type" = "Фильтр по URL, методу, статусу или типу";
@@ -89,8 +93,10 @@
 "Headers (Name: value, one per line)" = "Заголовки (Имя: значение, по одному в строке)";
 "Helper change failed: %@" = "Не удалось изменить помощник: %@";
 "Hex" = "Hex";
+"Host" = "Хост";
 "Host (e.g. *.apple.com)" = "Хост (напр. *.apple.com)";
 "Host (e.g. api.example.com)" = "Хост (напр. api.example.com)";
+"Hosts that skip the proxy" = "Хосты без прокси";
 "Identical" = "Идентичны";
 "Import .proto Files…" = "Импортировать файлы .proto…";
 "Import HAR…" = "Импортировать HAR…";
@@ -141,6 +147,7 @@
 "Only changes" = "Только изменения";
 "Open Login Items…" = "Открыть объекты входа…";
 "Open Session…" = "Открыть сессию…";
+"Password" = "Пароль";
 "Path" = "Путь";
 "Ping" = "Ping";
 "Pong" = "Pong";
@@ -189,7 +196,9 @@
 "Select two requests to compare them" = "Выберите два запроса для сравнения";
 "Send" = "Отправить";
 "Send %lld×" = "Отправить %lld×";
+"Send Proxio's outgoing traffic through another HTTP proxy. Every connection uses a CONNECT tunnel, so the proxy must allow CONNECT to the ports you use." = "Направляйте исходящий трафик Proxio через другой HTTP-прокси. Все соединения используют туннель CONNECT, поэтому прокси должен разрешать CONNECT к нужным портам.";
 "Send matching requests to a different scheme, host, port or path. Empty fields keep the original." = "Перенаправляет подходящие запросы на другую схему, хост, порт или путь. Пустые поля сохраняют исходное значение.";
+"Server" = "Сервер";
 "Session saved" = "Сессия сохранена";
 "Set Up Device…" = "Настроить устройство…";
 "Settings" = "Настройки";
@@ -234,6 +243,8 @@
 "Upload limit (kbit/s, 0 = unlimited)" = "Лимит отдачи (кбит/с, 0 = без лимита)";
 "Use as System Proxy" = "Использовать как системный прокси";
 "Use as system proxy" = "Использовать как системный прокси";
+"Use external proxy" = "Использовать внешний прокси";
+"Username" = "Имя пользователя";
 "Value" = "Значение";
 "Variables" = "Переменные";
 "Wait" = "Ожидание";

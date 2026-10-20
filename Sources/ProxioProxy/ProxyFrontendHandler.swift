@@ -102,8 +102,7 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         let store = env.store
         let started = startedAt
         let bypass = bypassed
-        ClientBootstrap(group: context.eventLoop)
-            .connect(host: env.rules.dnsOverride(for: host) ?? host, port: port)
+        UpstreamDialer.dial(host: env.rules.dnsOverride(for: host) ?? host, port: port, via: env.rules.externalProxy(for: host), loop: context.eventLoop)
             .whenComplete { result in
                 switch result {
                 case .failure:
@@ -301,31 +300,28 @@ final class ProxyFrontendHandler: ChannelInboundHandler, RemovableChannelHandler
         let env = self.env
         let keepAlive = self.keepAlive
 
-        ClientBootstrap(group: context.eventLoop)
-            .channelInitializer { ch in
-                do {
-                    var handlers: [ChannelHandler] = []
-                    if useTLS {
-                        handlers.append(try NIOSSLClientHandler(
-                            context: env.upstreamSSLContext,
-                            serverHostname: Self.isIPAddress(host) ? nil : host
-                        ))
-                    }
-                    handlers.append(HTTPRequestEncoder())
-                    handlers.append(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)))
-                    handlers.append(UpstreamResponseHandler(client: client, flow: flow, environment: env, keepAlive: keepAlive))
-                    try ch.pipeline.syncOperations.addHandlers(handlers)
-                    return ch.eventLoop.makeSucceededVoidFuture()
-                } catch {
-                    return ch.eventLoop.makeFailedFuture(error)
-                }
-            }
-            .connect(host: env.rules.dnsOverride(for: host) ?? host, port: port)
+        UpstreamDialer.dial(host: env.rules.dnsOverride(for: host) ?? host, port: port, via: env.rules.externalProxy(for: host), loop: context.eventLoop)
             .whenComplete { result in
                 switch result {
                 case .failure:
                     self.fail(context: context, status: .badGateway)
                 case .success(let upstream):
+                    do {
+                        var handlers: [ChannelHandler] = []
+                        if useTLS {
+                            handlers.append(try NIOSSLClientHandler(
+                                context: env.upstreamSSLContext,
+                                serverHostname: Self.isIPAddress(host) ? nil : host
+                            ))
+                        }
+                        handlers.append(HTTPRequestEncoder())
+                        handlers.append(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)))
+                        handlers.append(UpstreamResponseHandler(client: client, flow: flow, environment: env, keepAlive: keepAlive))
+                        try upstream.pipeline.syncOperations.addHandlers(handlers)
+                    } catch {
+                        upstream.close(promise: nil)
+                        return self.fail(context: context, status: .badGateway)
+                    }
                     upstream.write(HTTPClientRequestPart.head(upstreamHead), promise: nil)
                     if !bodyData.isEmpty { upstream.write(HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(bytes: bodyData))), promise: nil) }
                     upstream.writeAndFlush(HTTPClientRequestPart.end(nil), promise: nil)
