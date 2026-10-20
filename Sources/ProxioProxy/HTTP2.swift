@@ -130,7 +130,8 @@ enum UpstreamConnection {
 
     /// Sends `request` to the origin it names and reports the answer to `delegate`.
     /// A reused connection that turns out to be dead before any response byte is retried once on a fresh one.
-    static func open(request: HTTPRequestRecord, env: ProxyEnvironment, loop: EventLoop, hostHeader: String? = nil, delegate: UpstreamDelegate) {
+    static func open(request: HTTPRequestRecord, env: ProxyEnvironment, loop: EventLoop, hostHeader: String? = nil, delegate inner: UpstreamDelegate) {
+        let delegate = NoHTTP3(inner)
         let url = request.url
         guard let host = url.host, let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
@@ -306,6 +307,18 @@ enum UpstreamConnection {
                 stream.flush()
             }
         }
+    }
+
+    /// Hides `Alt-Svc` HTTP/3 offers from the client; QUIC would bypass the proxy.
+    private final class NoHTTP3: UpstreamDelegate {
+        private let inner: UpstreamDelegate
+        init(_ inner: UpstreamDelegate) { self.inner = inner }
+        func upstreamHead(status: Int, reason: String, headers: [HTTPHeader]) { inner.upstreamHead(status: status, reason: reason, headers: AltSvc.removingHTTP3(from: headers)) }
+        func upstreamBody(_ bytes: ByteBuffer) { inner.upstreamBody(bytes) }
+        func upstreamEnd(trailers: [HTTPHeader]) { inner.upstreamEnd(trailers: trailers) }
+        func upstreamFailed(_ error: Error) { inner.upstreamFailed(error) }
+        func upstreamStarted() { inner.upstreamStarted() }
+        func upstreamConnected(after seconds: TimeInterval) { inner.upstreamConnected(after: seconds) }
     }
 
     /// Passes everything through; if the connection dies before the response starts, runs `retry` instead of failing.

@@ -33,3 +33,15 @@ import Testing
         #expect(back.timings == flow.timings)
     }
 }
+
+@Suite struct AltSvcTests {
+    @Test func stripsOnlyHTTP3Offers() {
+        let out = AltSvc.removingHTTP3(from: [
+            HTTPHeader(name: "Alt-Svc", value: #"h3=":443"; ma=86400, h3-29=":443", h2=":8443""#),
+            HTTPHeader(name: "alt-svc", value: #"h3=":443""#),
+            HTTPHeader(name: "X", value: "1"),
+        ])
+        #expect(out.map(\.name) == ["Alt-Svc", "X"])
+        #expect(out[0].value == #"h2=":8443""#)
+    }
+}
